@@ -13,9 +13,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    // Find user
+    // Find user with their organization
     const user = await prisma.user.findUnique({
       where: { email },
+      include: { organization: true },
     });
 
     if (!user) {
@@ -24,21 +25,29 @@ export async function POST(req: Request) {
 
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
     if (!isPasswordValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Generate JWT
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: '7d',
-    });
+    // Generate JWT with organizationId for tenant isolation in sync routes
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, organizationId: user.organizationId },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     return NextResponse.json(
       {
         message: 'Login successful',
         token,
-        user: { id: user.id, email: user.email, name: user.name },
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          organizationId: user.organizationId,
+          organizationName: user.organization.name,
+        },
       },
       { status: 200 }
     );
