@@ -63,10 +63,62 @@ model Appraisal {
   propertyAddress  String?
   status           String       @default("draft")
   
-  syncStatus       String       @default("synced") // synced, pending_push
   remoteId         String?      @unique
 
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   deletedAt        DateTime?
+
+  improvement      Improvement?
+  siteDescription  SiteDescription?
+  sketch           Sketch?
+  photos           Photo[]
+}
+
+model Improvement {
+  id              String    @id @default(uuid())
+  appraisalId     String    @unique
+  appraisal       Appraisal @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+
+  data            Json?     // Stores all improvement form fields as a JSON blob for flexibility
+  
+  updatedAt       DateTime  @updatedAt
+}
+
+model SiteDescription {
+  id              String    @id @default(uuid())
+  appraisalId     String    @unique
+  appraisal       Appraisal @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+
+  topography      String?
+  grade           String?
+  cornerLot       Boolean?
+  
+  updatedAt       DateTime  @updatedAt
+}
+
+model Sketch {
+  id              String    @id @default(uuid())
+  appraisalId     String    @unique
+  appraisal       Appraisal @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+
+  data            String?   // JSON string of sketch points/lines
+  
+  updatedAt       DateTime  @updatedAt
+}
+
+model Photo {
+  id              String    @id @default(uuid())
+  appraisalId     String
+  appraisal       Appraisal @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+
+  fileName        String
+  s3Key           String?   // Key in DO Spaces
+  url             String?   // Public/private URL
+  timestamp       DateTime?
+  caption         String?
+  latitude        Float?
+  longitude       Float?
+
+  updatedAt       DateTime  @updatedAt
 }
