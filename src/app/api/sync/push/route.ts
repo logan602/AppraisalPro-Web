@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const syncedImprovements = [];
+    const syncedImprovements: { localId: string; remoteId: string }[] = [];
     // Currently we don't have Improvement model in Prisma, so we drop it.
     // In production we would add it, but for Phase 3 MVC we map the sync protocol.
 
