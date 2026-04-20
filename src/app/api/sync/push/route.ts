@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-development';
 
-// Middleware-like function to verify token
 function verifyToken(req: Request) {
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
@@ -23,32 +22,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId }
-    });
+    const { properties, improvements, photos, sketches, siteDescriptions } = await req.json();
 
-    if (!user) {
-       return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const { properties, improvements } = await req.json();
-
+    // 1. Sync Properties (Appraisals)
     const syncedProperties = [];
-
-    // Simple upsert logic
     if (properties && Array.isArray(properties)) {
       for (const prop of properties) {
-        // Map local SQLite properties back to Appraisal models in Prisma
         const appraisal = await prisma.appraisal.upsert({
-          where: { remoteId: prop.id }, // Assuming we map mobile Property.id = Appraisal.remoteId
+          where: { remoteId: prop.id },
           update: {
-            propertyAddress: prop.streetAddress, // simplified mapping
-            status: 'draft',
+            propertyAddress: prop.streetAddress,
+            status: 'draft', // or from prop if available
             updatedAt: new Date(),
           },
           create: {
-            organizationId: user.organizationId,
-            createdByUserId: user.id,
+            organizationId: payload.organizationId,
+            createdByUserId: payload.userId,
             propertyAddress: prop.streetAddress,
             remoteId: prop.id,
           }
@@ -57,14 +46,83 @@ export async function POST(req: Request) {
       }
     }
 
-    const syncedImprovements: { localId: string; remoteId: string }[] = [];
-    // Currently we don't have Improvement model in Prisma, so we drop it.
-    // In production we would add it, but for Phase 3 MVC we map the sync protocol.
+    // 2. Sync Improvements
+    const syncedImprovements = [];
+    if (improvements && Array.isArray(improvements)) {
+      for (const imp of improvements) {
+        // Find appraisal by local propertyId mapping
+        const appraisal = await prisma.appraisal.findUnique({
+          where: { remoteId: imp.propertyId }
+        });
+
+        if (appraisal) {
+          const syncedImp = await prisma.improvement.upsert({
+            where: { appraisalId: appraisal.id },
+            update: { data: imp, updatedAt: new Date() },
+            create: { appraisalId: appraisal.id, data: imp }
+          });
+          syncedImprovements.push({ localId: imp.id, remoteId: syncedImp.id });
+        }
+      }
+    }
+
+    // 3. Sync Photos (Metadata only, files are already in S3)
+    const syncedPhotos = [];
+    if (photos && Array.isArray(photos)) {
+      for (const p of photos) {
+        const appraisal = await prisma.appraisal.findUnique({
+          where: { remoteId: p.propertyId }
+        });
+
+        if (appraisal) {
+          const syncedPhoto = await prisma.photo.upsert({
+            where: { id: p.remoteId || 'new' }, // Photo usually has its own remote ID if already synced
+            update: {
+              caption: p.caption,
+              latitude: p.latitude,
+              longitude: p.longitude,
+              updatedAt: new Date(),
+            },
+            create: {
+              appraisalId: appraisal.id,
+              fileName: p.fileName,
+              s3Key: p.s3Key,
+              url: p.publicUrl,
+              caption: p.caption,
+              latitude: p.latitude,
+              longitude: p.longitude,
+              timestamp: p.timestamp ? new Date(p.timestamp) : null,
+            }
+          });
+          syncedPhotos.push({ localId: p.id, remoteId: syncedPhoto.id });
+        }
+      }
+    }
+
+    // 4. Sync Sketches
+    const syncedSketches = [];
+    if (sketches && Array.isArray(sketches)) {
+      for (const s of sketches) {
+        const appraisal = await prisma.appraisal.findUnique({
+          where: { remoteId: s.propertyId }
+        });
+        if (appraisal) {
+          const syncedSketch = await prisma.sketch.upsert({
+            where: { appraisalId: appraisal.id },
+            update: { data: s.data, updatedAt: new Date() },
+            create: { appraisalId: appraisal.id, data: s.data }
+          });
+          syncedSketches.push({ localId: s.id, remoteId: syncedSketch.id });
+        }
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 
       syncedProperties,
-      syncedImprovements 
+      syncedImprovements,
+      syncedPhotos,
+      syncedSketches
     });
   } catch (error) {
     console.error('Push sync error:', error);
