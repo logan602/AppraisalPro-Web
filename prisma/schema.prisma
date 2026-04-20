@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanType {
+  INDIVIDUAL
+  ENTERPRISE
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+model Organization {
+  id                   String       @id @default(uuid())
+  name                 String
+  planType             PlanType     @default(INDIVIDUAL)
+  billingCycle         BillingCycle @default(MONTHLY)
+  maxSeats             Int          @default(1)
+  stripeSubscriptionId String?
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  users                User[]
+  appraisals           Appraisal[]
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String       @unique
+  passwordHash   String
+  name           String?
+  role           Role         @default(ADMIN)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  createdAppraisals Appraisal[]
+}
+
+model Appraisal {
+  id               String       @id @default(uuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  createdByUserId  String
+  createdByUser    User         @relation(fields: [createdByUserId], references: [id])
+
+  clientName       String?
+  propertyAddress  String?
+  status           String       @default("draft")
+  
+  syncStatus       String       @default("synced") // synced, pending_push
+  remoteId         String?      @unique
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
+}

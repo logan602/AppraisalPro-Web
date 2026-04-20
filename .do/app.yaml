@@ -1,0 +1,28 @@
+name: appraisalpro-web
+region: nyc
+services:
+  - name: appraisalpro-web
+    github:
+      branch: main
+      repo: your-github-name/appraisalpro2.0
+      deploy_on_push: true
+    source_dir: appraisalpro-web
+    build_command: "npx prisma generate && npx prisma migrate deploy && npm run build"
+    run_command: "npm start"
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 3000
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${appraisalpro-db.DATABASE_URL}
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        value: "generate_a_secure_random_string_here_before_prod"
+databases:
+  - name: appraisalpro-db
+    engine: PG
+    version: "15"
+    production: true
+    cluster_name: appraisalpro-db-cluster
