@@ -194,21 +194,11 @@ export default function Sketcher({ onSave, initialData }: Props) {
         setDimInput(v => v.slice(0, -1));
       }
       
-      // Secondary cardinal directions via arrows
+      // Directions via arrows only (primary directions)
       if (e.key === 'ArrowUp') handleDirection('N');
       if (e.key === 'ArrowDown') handleDirection('S');
       if (e.key === 'ArrowLeft') handleDirection('W');
       if (e.key === 'ArrowRight') handleDirection('E');
-
-      // Numpad 8-way CAD style
-      if (e.key === '8') handleDirection('N');
-      if (e.key === '2') handleDirection('S');
-      if (e.key === '4') handleDirection('W');
-      if (e.key === '6') handleDirection('E');
-      if (e.key === '7') handleDirection('NW');
-      if (e.key === '9') handleDirection('NE');
-      if (e.key === '1') handleDirection('SW');
-      if (e.key === '3') handleDirection('SE');
     };
 
     window.addEventListener('keydown', onKeyDown);
