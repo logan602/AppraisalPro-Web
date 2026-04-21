@@ -23,13 +23,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all appraisals for the organization, including counts for related data
+    // Fetch all appraisals for the organization, including author and counts
     const appraisals = await prisma.appraisal.findMany({
       where: { 
         organizationId: payload.organizationId,
         deletedAt: null 
       },
       include: {
+        createdByUser: {
+          select: { name: true }
+        },
         _count: {
           select: { photos: true }
         },

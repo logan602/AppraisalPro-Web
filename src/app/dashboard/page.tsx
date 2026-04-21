@@ -11,8 +11,11 @@ interface Appraisal {
   status: string;
   remoteId: string;
   updatedAt: string;
+  createdByUser?: {
+    name: string;
+  };
   _count: {
-    photos: true;
+    photos: number;
   };
 }
 
@@ -84,7 +87,7 @@ export default function AppraisalsPage() {
               <div className={styles.cardHeader}>
                 <div>
                   <div className={styles.address}>{app.propertyAddress || 'No Address Provided'}</div>
-                  <div className={styles.cityState}>Sync ID: {app.remoteId || app.id.slice(0, 8)}</div>
+                  <div className={styles.cityState}>By: {app.createdByUser?.name || 'Unknown'}</div>
                 </div>
                 <div style={{
                   backgroundColor: app.status === 'completed' ? '#10b981' : '#f59e0b',
