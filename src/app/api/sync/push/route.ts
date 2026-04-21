@@ -15,6 +15,13 @@ function verifyToken(req: Request) {
   }
 }
 
+// Robust date parsing to prevent "Invalid Date" errors in Prisma
+function safeParseDate(d: any) {
+  if (!d || d === "" || d === "null" || d === "undefined") return null;
+  const date = new Date(d);
+  return isNaN(date.getTime()) ? null : date;
+}
+
 export async function POST(req: Request) {
   try {
     const payload = verifyToken(req);
@@ -28,29 +35,34 @@ export async function POST(req: Request) {
     const syncedProperties = [];
     if (properties && Array.isArray(properties)) {
       for (const prop of properties as any[]) {
-        const appraisal = await prisma.appraisal.upsert({
-          where: { remoteId: prop.id },
-          update: {
-            propertyAddress: prop.streetAddress,
-            city: prop.city,
-            state: prop.state,
-            zipCode: prop.zipCode,
-            inspectionDate: prop.inspectionDate ? new Date(prop.inspectionDate) : null,
-            status: 'draft',
-            updatedAt: new Date(),
-          },
-          create: {
-            organizationId: payload.organizationId,
-            createdByUserId: payload.userId,
-            propertyAddress: prop.streetAddress,
-            city: prop.city,
-            state: prop.state,
-            zipCode: prop.zipCode,
-            inspectionDate: prop.inspectionDate ? new Date(prop.inspectionDate) : null,
-            remoteId: prop.id,
-          }
-        });
-        syncedProperties.push({ localId: prop.id, remoteId: appraisal.id });
+        try {
+          const appraisal = await prisma.appraisal.upsert({
+            where: { remoteId: prop.id },
+            update: {
+              propertyAddress: prop.streetAddress,
+              city: prop.city,
+              state: prop.state,
+              zipCode: prop.zipCode,
+              inspectionDate: safeParseDate(prop.inspectionDate),
+              status: 'draft',
+              updatedAt: new Date(),
+            },
+            create: {
+              organizationId: payload.organizationId,
+              createdByUserId: payload.userId,
+              propertyAddress: prop.streetAddress,
+              city: prop.city,
+              state: prop.state,
+              zipCode: prop.zipCode,
+              inspectionDate: safeParseDate(prop.inspectionDate),
+              remoteId: prop.id,
+            }
+          });
+          syncedProperties.push({ localId: prop.id, remoteId: appraisal.id });
+        } catch (err) {
+          console.error(`Failed to sync property ${prop.id}:`, err);
+          // Continue with others
+        }
       }
     }
 
@@ -58,17 +70,21 @@ export async function POST(req: Request) {
     const syncedImprovements = [];
     if (improvements && Array.isArray(improvements)) {
       for (const imp of improvements as any[]) {
-        const appraisal = await prisma.appraisal.findUnique({
-          where: { remoteId: imp.propertyId }
-        });
-
-        if (appraisal) {
-          const syncedImp = await prisma.improvement.upsert({
-            where: { appraisalId: appraisal.id },
-            update: { data: imp, updatedAt: new Date() },
-            create: { appraisalId: appraisal.id, data: imp }
+        try {
+          const appraisal = await prisma.appraisal.findUnique({
+            where: { remoteId: imp.propertyId }
           });
-          syncedImprovements.push({ localId: imp.id, remoteId: syncedImp.id });
+
+          if (appraisal) {
+            const syncedImp = await prisma.improvement.upsert({
+              where: { appraisalId: appraisal.id },
+              update: { data: imp, updatedAt: new Date() },
+              create: { appraisalId: appraisal.id, data: imp }
+            });
+            syncedImprovements.push({ localId: imp.id, remoteId: syncedImp.id });
+          }
+        } catch (err) {
+          console.error(`Failed to sync improvement for prop ${imp.propertyId}:`, err);
         }
       }
     }
@@ -77,48 +93,51 @@ export async function POST(req: Request) {
     const syncedPhotos = [];
     if (photos && Array.isArray(photos)) {
       for (const p of photos as any[]) {
-        const appraisal = await prisma.appraisal.findUnique({
-          where: { remoteId: p.propertyId }
-        });
+        try {
+          const appraisal = await prisma.appraisal.findUnique({
+            where: { remoteId: p.propertyId }
+          });
 
-        if (appraisal) {
-          // Identify existing photo by appraisalId + fileName if remoteId is missing
-          let existingPhoto = null;
-          if (p.remoteId) {
-            existingPhoto = await prisma.photo.findUnique({ where: { id: p.remoteId } });
-          } else {
-            existingPhoto = await prisma.photo.findFirst({
-              where: { 
-                appraisalId: appraisal.id,
-                fileName: p.fileName
-              }
-            });
-          }
-
-          const photoUpdate = {
-            caption: p.caption,
-            latitude: p.latitude,
-            longitude: p.longitude,
-            s3Key: p.s3Key,
-            url: p.publicUrl,
-            timestamp: p.timestamp ? new Date(p.timestamp) : null,
-            updatedAt: new Date(),
-          };
-
-          const syncedPhoto = existingPhoto 
-            ? await prisma.photo.update({
-                where: { id: existingPhoto.id },
-                data: photoUpdate
-              })
-            : await prisma.photo.create({
-                data: {
-                  ...photoUpdate,
+          if (appraisal) {
+            let existingPhoto = null;
+            if (p.remoteId) {
+              existingPhoto = await prisma.photo.findUnique({ where: { id: p.remoteId } });
+            } else {
+              existingPhoto = await prisma.photo.findFirst({
+                where: { 
                   appraisalId: appraisal.id,
-                  fileName: p.fileName,
+                  fileName: p.fileName
                 }
               });
+            }
 
-          syncedPhotos.push({ localId: p.id, remoteId: syncedPhoto.id });
+            const photoUpdate = {
+              caption: p.caption,
+              latitude: p.latitude,
+              longitude: p.longitude,
+              s3Key: p.s3Key,
+              url: p.publicUrl,
+              timestamp: safeParseDate(p.timestamp),
+              updatedAt: new Date(),
+            };
+
+            const syncedPhoto = existingPhoto 
+              ? await prisma.photo.update({
+                  where: { id: existingPhoto.id },
+                  data: photoUpdate
+                })
+              : await prisma.photo.create({
+                  data: {
+                    ...photoUpdate,
+                    appraisalId: appraisal.id,
+                    fileName: p.fileName,
+                  }
+                });
+
+            syncedPhotos.push({ localId: p.id, remoteId: syncedPhoto.id });
+          }
+        } catch (err) {
+          console.error(`Failed to sync photo ${p.fileName}:`, err);
         }
       }
     }
@@ -127,20 +146,24 @@ export async function POST(req: Request) {
     const syncedSketches = [];
     if (sketches && Array.isArray(sketches)) {
       for (const s of sketches as any[]) {
-        const appraisal = await prisma.appraisal.findUnique({
-          where: { remoteId: s.propertyId }
-        });
-        if (appraisal) {
-          const syncedSketch = await prisma.sketch.upsert({
-            where: { appraisalId: appraisal.id },
-            update: { data: s.data, updatedAt: new Date() },
-            create: { 
-              appraisalId: appraisal.id, 
-              organizationId: payload.organizationId,
-              data: s.data 
-            }
+        try {
+          const appraisal = await prisma.appraisal.findUnique({
+            where: { remoteId: s.propertyId }
           });
-          syncedSketches.push({ localId: s.id, remoteId: syncedSketch.id });
+          if (appraisal) {
+            const syncedSketch = await prisma.sketch.upsert({
+              where: { appraisalId: appraisal.id },
+              update: { data: s.data, updatedAt: new Date() },
+              create: { 
+                appraisalId: appraisal.id, 
+                organizationId: payload.organizationId,
+                data: s.data 
+              }
+            });
+            syncedSketches.push({ localId: s.id, remoteId: syncedSketch.id });
+          }
+        } catch (err) {
+          console.error(`Failed to sync sketch for prop ${s.propertyId}:`, err);
         }
       }
     }
@@ -152,8 +175,12 @@ export async function POST(req: Request) {
       syncedPhotos,
       syncedSketches
     });
-  } catch (error) {
-    console.error('Push sync error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('CRITICAL: Push sync error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    }, { status: 500 });
   }
 }
