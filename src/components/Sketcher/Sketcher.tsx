@@ -124,6 +124,64 @@ export default function Sketcher({ onSave, initialData }: Props) {
     setDimInput('');
   }, [active, activeIdx, dimInput, shapes]);
 
+  // Auto-Zoom Logic
+  const fitView = useCallback(() => {
+    const allPts = shapes.flatMap(s => s.points);
+    if (allPts.length === 0) return;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    allPts.forEach(p => {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    });
+
+    const w = Math.max(100, maxX - minX);
+    const h = Math.max(100, maxY - minY);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    
+    // Calculate zoom to fit 800x600 viewport with padding
+    const padding = 100;
+    const nz = Math.min(700 / (w + padding), 500 / (h + padding));
+    
+    setCamera({ x: cx, y: cy, z: Math.min(2.0, Math.max(0.1, nz)) });
+  }, [shapes]);
+
+  useEffect(() => {
+    if (!waitingForStart) fitView();
+  }, [shapes.length, waitingForStart, fitView]);
+
+  const handleExport = () => {
+    const svg = document.querySelector(`.${styles.svgCanvas}`);
+    if (!svg) return;
+
+    const xml = new XMLSerializer().serializeToString(svg);
+    const svg64 = btoa(unescape(encodeURIComponent(xml)));
+    const b64Start = 'data:image/svg+xml;base64,';
+    const image64 = b64Start + svg64;
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1600;
+      canvas.height = 1200;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#0b0f1a';
+        ctx.fillRect(0, 0, 1600, 1200);
+        ctx.drawImage(img, 0, 0, 1600, 1200);
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `blueprint-${Date.now()}.png`;
+        link.href = url;
+        link.click();
+      }
+    };
+    img.src = image64;
+  };
+
   // Keyboard Support
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -161,7 +219,8 @@ export default function Sketcher({ onSave, initialData }: Props) {
     <div className={styles.sketcher}>
       <div className={styles.toolbar}>
         <button className={styles.toolBtn} onClick={addShape}>➕ Add Area</button>
-        <button className={styles.toolBtn} onClick={() => onSave({ shapes })}>💾 Save Sketch</button>
+        <button className={styles.toolBtn} onClick={handleExport}>📥 Download Image</button>
+        <button className={styles.toolBtn} onClick={() => onSave({ shapes })}>💾 Save Blueprint</button>
         <button className={styles.toolBtn} onClick={() => setShapes([])}>🗑️ Clear</button>
       </div>
 
@@ -177,7 +236,7 @@ export default function Sketcher({ onSave, initialData }: Props) {
       >
         <svg 
           className={styles.svgCanvas} 
-          viewBox={`${camera.x - 400} ${camera.y - 300} 800 600`}
+          viewBox={`${camera.x - (400 / camera.z)} ${camera.y - (300 / camera.z)} ${800 / camera.z} ${600 / camera.z}`}
           overflow="visible"
         >
           {/* Grid */}
