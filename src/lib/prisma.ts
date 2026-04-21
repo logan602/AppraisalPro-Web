@@ -2,13 +2,18 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 
-const prismaClientSingleton = () => {
-  // Normalize the connection string: pg pool prefers postgresql://
-  const rawUrl = process.env.DATABASE_URL || "";
-  const normalizedUrl = rawUrl.replace(/^postgres:\/\//, "postgresql://");
+const getDatabaseUrl = (): string => {
+  const url = process.env.REAL_DATABASE_URL || process.env.DATABASE_URL;
+  if (!url) {
+    return "postgresql://placeholder:placeholder@localhost:5432/placeholder";
+  }
+  // Normalize DigitalOcean's postgres:// prefix to postgresql:// for Prisma
+  return url.replace(/^postgres:\/\//, "postgresql://");
+}
 
+const prismaClientSingleton = () => {
   const pool = new pg.Pool({ 
-    connectionString: normalizedUrl,
+    connectionString: getDatabaseUrl(),
     ssl: {
       rejectUnauthorized: false // Required for DigitalOcean managed databases
     }

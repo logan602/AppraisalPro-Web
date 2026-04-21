@@ -4,7 +4,7 @@ import { defineConfig } from "prisma/config";
 // During the build phase (prisma generate), no DB connection is made, so we
 // fall back to a placeholder so the build doesn't fail.
 function getDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.REAL_DATABASE_URL || process.env.DATABASE_URL;
   if (!url) {
     return "postgresql://placeholder:placeholder@localhost:5432/placeholder";
   }

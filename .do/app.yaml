@@ -16,6 +16,9 @@ services:
     envs:
       - key: DATABASE_URL
         scope: RUN_AND_BUILD_TIME
+        value: "postgresql://dummy:dummy@localhost:5432/dummy" # dummy to keep generator happy
+      - key: REAL_DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
         value: ${appraisalpro-db.DATABASE_URL}
       - key: JWT_SECRET
         scope: RUN_TIME
