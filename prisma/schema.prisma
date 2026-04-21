@@ -102,8 +102,12 @@ model SiteDescription {
 
 model Sketch {
   id              String    @id @default(uuid())
-  appraisalId     String    @unique
-  appraisal       Appraisal @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+  name            String?     // For standalone identification
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  appraisalId     String?   @unique
+  appraisal       Appraisal? @relation(fields: [appraisalId], references: [id], onDelete: SetNull)
 
   data            String?   // JSON string of sketch points/lines
   
