@@ -28,6 +28,8 @@ function shoelace(pts: { x: number, y: number }[]) {
 
 interface Shape {
   id: string;
+  name: string;
+  multiplier: number;
   label: string;
   color: string;
   closed: boolean;
@@ -45,6 +47,7 @@ export default function Sketcher({ onSave, initialData }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [dimInput, setDimInput] = useState('');
   const [waitingForStart, setWaitingForStart] = useState(shapes.length === 0);
+  const [editingAreaIdx, setEditingAreaIdx] = useState<number | null>(null);
   
   const [pendingWall, setPendingWall] = useState<{ angle: number, feet: number } | null>(null);
   
@@ -106,6 +109,8 @@ export default function Sketcher({ onSave, initialData }: Props) {
     const colors = ['#2980b9', '#e74c3c', '#27ae60', '#8e44ad', '#e67e22', '#16a085'];
     const newShape: Shape = {
       id: `S${Date.now()}`,
+      name: `Living Area ${shapes.length + 1}`,
+      multiplier: 1.0,
       label: `Area ${shapes.length + 1}`,
       color: colors[shapes.length % colors.length],
       closed: false,
@@ -115,6 +120,21 @@ export default function Sketcher({ onSave, initialData }: Props) {
     setShapes(prev => [...prev, newShape]);
     setActiveIdx(shapes.length);
     setWaitingForStart(true);
+  };
+
+  const closeArea = () => {
+    if (!active || active.closed || active.points.length < 3) return;
+    const nextShapes = shapes.map((s, i) => i === activeIdx ? { ...s, closed: true } : s);
+    setShapes(nextShapes);
+    setEditingAreaIdx(activeIdx);
+    setPendingWall(null);
+  };
+
+  const getCentroid = (pts: { x: number, y: number }[]) => {
+    if (pts.length === 0) return { x: 0, y: 0 };
+    let x = 0, y = 0;
+    pts.forEach(p => { x += p.x; y += p.y; });
+    return { x: x / pts.length, y: y / pts.length };
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -193,16 +213,55 @@ export default function Sketcher({ onSave, initialData }: Props) {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
+      const tableHeight = (shapes.filter(s => s.closed).length * 60) + 120;
       canvas.width = 1600;
-      canvas.height = 1200;
+      canvas.height = 1200 + tableHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // 1. Background
         ctx.fillStyle = '#0b0f1a';
-        ctx.fillRect(0, 0, 1600, 1200);
+        ctx.fillRect(0, 0, 1600, 1200 + tableHeight);
+        
+        // 2. Draw Sketch
         ctx.drawImage(img, 0, 0, 1600, 1200);
+        
+        // 3. Draw Summary Table
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillRect(0, 1200, 1600, tableHeight);
+        
+        ctx.fillStyle = 'var(--primary)';
+        ctx.font = 'bold 32px Inter, sans-serif';
+        ctx.fillText('CALCULATIONS SUMMARY', 60, 1280);
+        
+        ctx.font = '18px Inter, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillText('AREA NAME', 60, 1340);
+        ctx.fillText('SQ FT', 600, 1340);
+        ctx.fillText('MULT', 800, 1340);
+        ctx.fillText('ADJUSTED TOTAL', 1000, 1340);
+        
+        let y = 1400;
+        shapes.filter(s => s.closed).forEach(s => {
+          const rawArea = shoelace(s.points) / (SCALE * SCALE);
+          const adjArea = rawArea * s.multiplier;
+          
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 24px Inter, sans-serif';
+          ctx.fillText(s.name.toUpperCase(), 60, y);
+          
+          ctx.font = '22px Inter, sans-serif';
+          ctx.fillText(rawArea.toFixed(0), 600, y);
+          ctx.fillText(`${s.multiplier.toFixed(2)}x`, 800, y);
+          
+          ctx.fillStyle = s.color;
+          ctx.fillText(`${adjArea.toFixed(0)} SQ FT`, 1000, y);
+          
+          y += 60;
+        });
+
         const url = canvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.download = `blueprint-${Date.now()}.png`;
+        link.download = `sketch-report-${Date.now()}.png`;
         link.href = url;
         link.click();
       }
@@ -245,6 +304,7 @@ export default function Sketcher({ onSave, initialData }: Props) {
     <div className={styles.sketcher}>
       <div className={styles.toolbar}>
         <button className={styles.toolBtn} onClick={addShape}>➕ Add Area</button>
+        <button className={styles.toolBtn} onClick={closeArea}>🔒 Close Area</button>
         <button className={styles.toolBtn} onClick={handleExport}>📥 Download Image</button>
         <button className={styles.toolBtn} onClick={() => onSave({ shapes })}>💾 Save Sketch</button>
         <button className={styles.toolBtn} onClick={() => setShapes([])}>🗑️ Clear</button>
@@ -279,6 +339,9 @@ export default function Sketcher({ onSave, initialData }: Props) {
             const pts = s.points.map(p => `${p.x},${p.y}`).join(' ');
             const isActive = idx === activeIdx;
             
+            const centroid = getCentroid(s.points);
+            const areaSqFt = (shoelace(s.points) / (SCALE * SCALE)) * (s.multiplier || 1.0);
+            
             return (
               <g key={s.id}>
                 {s.closed ? (
@@ -296,6 +359,56 @@ export default function Sketcher({ onSave, initialData }: Props) {
                     stroke={s.color} 
                     strokeWidth="3" 
                   />
+                )}
+
+                {/* Wall Dimensions */}
+                {s.points.map((p1, i) => {
+                  const p2 = s.points[i + 1] || (s.closed ? s.points[0] : null);
+                  if (!p2) return null;
+                  const mx = (p1.x + p2.x) / 2;
+                  const my = (p1.y + p2.y) / 2;
+                  const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)) / SCALE;
+                  const ang = Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
+                  
+                  return (
+                    <g key={`${s.id}-dim-${i}`} transform={`translate(${mx}, ${my}) rotate(${Math.abs(ang) > 90 ? ang + 180 : ang})`}>
+                      <text 
+                        y="-4" 
+                        textAnchor="middle" 
+                        fill="rgba(255,255,255,0.6)" 
+                        fontSize={10 / camera.z} 
+                        fontWeight="bold"
+                        pointerEvents="none"
+                      >
+                        {dist.toFixed(1)}'
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Area Label */}
+                {s.closed && (
+                  <g transform={`translate(${centroid.x}, ${centroid.y})`}>
+                    <text 
+                      textAnchor="middle" 
+                      fill="white" 
+                      fontSize={14 / camera.z} 
+                      fontWeight="bold"
+                      style={{ filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.5))' }}
+                      pointerEvents="none"
+                    >
+                      {s.name || s.label}
+                    </text>
+                    <text 
+                      y={18 / camera.z} 
+                      textAnchor="middle" 
+                      fill="rgba(255,255,255,0.7)" 
+                      fontSize={12 / camera.z}
+                      pointerEvents="none"
+                    >
+                      {areaSqFt.toFixed(0)} sq ft
+                    </text>
+                  </g>
                 )}
 
                 {/* Pending Wall Preview */}
@@ -376,6 +489,50 @@ export default function Sketcher({ onSave, initialData }: Props) {
           ))}
         </div>
       </div>
+
+      {editingAreaIdx !== null && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal + " glass-panel"}>
+            <h3>Area Settings</h3>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-dim)' }}>Area Name</label>
+              <input 
+                className={styles.modalInput} 
+                value={shapes[editingAreaIdx]?.name || ''} 
+                onChange={(e) => {
+                  const next = [...shapes];
+                  next[editingAreaIdx].name = e.target.value;
+                  setShapes(next);
+                }}
+                placeholder="e.g. Living Area, Garage"
+              />
+            </div>
+            
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-dim)' }}>Multiplier</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <button className={styles.stepBtn} onClick={() => {
+                  const next = [...shapes];
+                  next[editingAreaIdx].multiplier = Math.max(0, next[editingAreaIdx].multiplier - 0.25);
+                  setShapes(next);
+                }}>-</button>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', minWidth: '60px', textAlign: 'center' }}>
+                  {shapes[editingAreaIdx]?.multiplier.toFixed(2)}x
+                </div>
+                <button className={styles.stepBtn} onClick={() => {
+                  const next = [...shapes];
+                  next[editingAreaIdx].multiplier += 0.25;
+                  setShapes(next);
+                }}>+</button>
+              </div>
+            </div>
+
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setEditingAreaIdx(null)}>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
