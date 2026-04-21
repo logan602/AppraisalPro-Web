@@ -9,7 +9,14 @@ function getDatabaseUrl(): string {
     return "postgresql://placeholder:placeholder@localhost:5432/placeholder";
   }
   // Normalize DigitalOcean's postgres:// prefix to postgresql:// for Prisma
-  return url.replace(/^postgres:\/\//, "postgresql://");
+  // and force sslmode=no-verify to handle self-signed certificates
+  let normalized = url.replace(/^postgres:\/\//, "postgresql://");
+  if (normalized.includes("sslmode=require")) {
+    normalized = normalized.replace("sslmode=require", "sslmode=no-verify");
+  } else if (!normalized.includes("sslmode=")) {
+    normalized += (normalized.includes("?") ? "&" : "?") + "sslmode=no-verify";
+  }
+  return normalized;
 }
 
 export default defineConfig({
