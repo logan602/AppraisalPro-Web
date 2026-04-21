@@ -77,6 +77,13 @@
 .cityState {
   font-size: 14px;
   color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.appraiserName {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-dim);
 }
 
 .statusIcon {

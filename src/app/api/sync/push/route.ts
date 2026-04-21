@@ -32,13 +32,21 @@ export async function POST(req: Request) {
           where: { remoteId: prop.id },
           update: {
             propertyAddress: prop.streetAddress,
-            status: 'draft', // or from prop if available
+            city: prop.city,
+            state: prop.state,
+            zipCode: prop.zipCode,
+            inspectionDate: prop.inspectionDate ? new Date(prop.inspectionDate) : null,
+            status: 'draft',
             updatedAt: new Date(),
           },
           create: {
             organizationId: payload.organizationId,
             createdByUserId: payload.userId,
             propertyAddress: prop.streetAddress,
+            city: prop.city,
+            state: prop.state,
+            zipCode: prop.zipCode,
+            inspectionDate: prop.inspectionDate ? new Date(prop.inspectionDate) : null,
             remoteId: prop.id,
           }
         });
@@ -50,7 +58,6 @@ export async function POST(req: Request) {
     const syncedImprovements = [];
     if (improvements && Array.isArray(improvements)) {
       for (const imp of improvements as any[]) {
-        // Find appraisal by local propertyId mapping
         const appraisal = await prisma.appraisal.findUnique({
           where: { remoteId: imp.propertyId }
         });
@@ -66,7 +73,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Sync Photos (Metadata only, files are already in S3)
+    // 3. Sync Photos
     const syncedPhotos = [];
     if (photos && Array.isArray(photos)) {
       for (const p of photos as any[]) {
@@ -75,25 +82,42 @@ export async function POST(req: Request) {
         });
 
         if (appraisal) {
-          const syncedPhoto = await prisma.photo.upsert({
-            where: { id: p.remoteId || 'new' }, // Photo usually has its own remote ID if already synced
-            update: {
-              caption: p.caption,
-              latitude: p.latitude,
-              longitude: p.longitude,
-              updatedAt: new Date(),
-            },
-            create: {
-              appraisalId: appraisal.id,
-              fileName: p.fileName,
-              s3Key: p.s3Key,
-              url: p.publicUrl,
-              caption: p.caption,
-              latitude: p.latitude,
-              longitude: p.longitude,
-              timestamp: p.timestamp ? new Date(p.timestamp) : null,
-            }
-          });
+          // Identify existing photo by appraisalId + fileName if remoteId is missing
+          let existingPhoto = null;
+          if (p.remoteId) {
+            existingPhoto = await prisma.photo.findUnique({ where: { id: p.remoteId } });
+          } else {
+            existingPhoto = await prisma.photo.findFirst({
+              where: { 
+                appraisalId: appraisal.id,
+                fileName: p.fileName
+              }
+            });
+          }
+
+          const photoUpdate = {
+            caption: p.caption,
+            latitude: p.latitude,
+            longitude: p.longitude,
+            s3Key: p.s3Key,
+            url: p.publicUrl,
+            timestamp: p.timestamp ? new Date(p.timestamp) : null,
+            updatedAt: new Date(),
+          };
+
+          const syncedPhoto = existingPhoto 
+            ? await prisma.photo.update({
+                where: { id: existingPhoto.id },
+                data: photoUpdate
+              })
+            : await prisma.photo.create({
+                data: {
+                  ...photoUpdate,
+                  appraisalId: appraisal.id,
+                  fileName: p.fileName,
+                }
+              });
+
           syncedPhotos.push({ localId: p.id, remoteId: syncedPhoto.id });
         }
       }

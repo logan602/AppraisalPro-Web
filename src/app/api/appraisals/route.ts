@@ -37,7 +37,7 @@ export async function GET(req: Request) {
           select: { photos: true }
         },
       },
-      orderBy: { updatedAt: 'desc' }
+      orderBy: { inspectionDate: 'desc' }
     });
 
     return NextResponse.json({ appraisals });

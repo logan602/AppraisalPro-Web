@@ -104,7 +104,18 @@ export default function AppraisalDetailPage({ params }: { params: Promise<{ id: 
               <h3 className={styles.cardTitle}>Property Details</h3>
               <div className={styles.dataRow}>
                 <span className={styles.label}>Address</span>
-                <span className={styles.value}>{appraisal.propertyAddress}</span>
+                <span className={styles.value}>
+                  {appraisal.propertyAddress}<br/>
+                  {(appraisal as any).city && `${(appraisal as any).city}, `}{(appraisal as any).state} {(appraisal as any).zipCode}
+                </span>
+              </div>
+              <div className={styles.dataRow}>
+                <span className={styles.label}>Inspection Date</span>
+                <span className={styles.value}>
+                  {(appraisal as any).inspectionDate 
+                    ? new Date((appraisal as any).inspectionDate).toLocaleDateString() 
+                    : 'Not set'}
+                </span>
               </div>
               <div className={styles.dataRow}>
                 <span className={styles.label}>Status</span>
@@ -122,6 +133,10 @@ export default function AppraisalDetailPage({ params }: { params: Promise<{ id: 
                 <span className={styles.label}>Grade</span>
                 <span className={styles.value}>{appraisal.siteDescription?.grade || 'N/A'}</span>
               </div>
+              <div className={styles.dataRow}>
+                <span className={styles.label}>Corner Lot</span>
+                <span className={styles.value}>{appraisal.siteDescription?.cornerLot ? 'Yes' : 'No'}</span>
+              </div>
             </div>
           </div>
         )}
@@ -131,14 +146,15 @@ export default function AppraisalDetailPage({ params }: { params: Promise<{ id: 
             <div className={styles.infoCard + " glass-panel"} style={{ gridColumn: '1 / -1' }}>
               <h3 className={styles.cardTitle}>Building Characteristics</h3>
               <div className={styles.infoGrid}>
-                 {/* Map JSON data from appraisal.improvement.data here */}
                  {appraisal.improvement?.data ? (
-                   Object.entries(appraisal.improvement.data).map(([key, val]) => (
-                     <div key={key} className={styles.dataRow}>
-                        <span className={styles.label} style={{textTransform: 'capitalize'}}>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                        <span className={styles.value}>{String(val)}</span>
-                     </div>
-                   ))
+                   Object.entries(appraisal.improvement.data)
+                    .filter(([key]) => !['id', 'propertyId', 'syncStatus', 'remoteId', 'updatedAt', 'deletedAt'].includes(key))
+                    .map(([key, val]) => (
+                      <div key={key} className={styles.dataRow}>
+                         <span className={styles.label} style={{textTransform: 'capitalize'}}>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                         <span className={styles.value}>{val === null || val === undefined ? 'N/A' : String(val)}</span>
+                      </div>
+                    ))
                  ) : (
                    <p className={styles.value}>No improvement data synced yet.</p>
                  )}

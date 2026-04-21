@@ -8,9 +8,14 @@ import Link from 'next/link';
 interface Appraisal {
   id: string;
   propertyAddress: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  inspectionDate?: string;
   status: string;
   remoteId: string;
   updatedAt: string;
+  createdAt: string;
   createdByUser?: {
     name: string;
   };
@@ -87,7 +92,10 @@ export default function AppraisalsPage() {
               <div className={styles.cardHeader}>
                 <div>
                   <div className={styles.address}>{app.propertyAddress || 'No Address Provided'}</div>
-                  <div className={styles.cityState}>By: {app.createdByUser?.name || 'Unknown'}</div>
+                  <div className={styles.cityState}>
+                    {app.city && `${app.city}, `}{app.state} {app.zipCode}
+                  </div>
+                  <div className={styles.appraiserName}>Appraiser: {app.createdByUser?.name || 'Unknown'}</div>
                 </div>
                 <div style={{
                   backgroundColor: app.status === 'completed' ? '#10b981' : '#f59e0b',
@@ -106,7 +114,9 @@ export default function AppraisalsPage() {
 
               <div className={styles.footer}>
                 <span className={styles.date}>
-                  Updated {new Date(app.updatedAt).toLocaleDateString()}
+                  {app.inspectionDate 
+                    ? `Inspected ${new Date(app.inspectionDate).toLocaleDateString()}` 
+                    : `Created ${new Date(app.createdAt).toLocaleDateString()}`}
                 </span>
                 <span className={styles.badge} style={{ color: 'var(--primary)' }}>View Details</span>
               </div>

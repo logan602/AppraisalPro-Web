@@ -63,6 +63,10 @@ model Appraisal {
 
   clientName       String?
   propertyAddress  String?
+  city             String?
+  state            String?
+  zipCode          String?
+  inspectionDate   DateTime?
   status           String       @default("draft")
   
   remoteId         String?      @unique
