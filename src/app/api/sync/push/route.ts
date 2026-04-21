@@ -25,11 +25,28 @@ function safeParseDate(d: any) {
 export async function POST(req: Request) {
   try {
     const payload = verifyToken(req);
-    if (!payload || !payload.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!payload || !payload.userId || !payload.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized: Missing user or organization context' }, { status: 401 });
     }
 
-    const { properties, improvements, photos, sketches, siteDescriptions } = await req.json();
+    const body = await req.json();
+    const { properties, improvements, photos, sketches, siteDescriptions } = body;
+
+    // SCHEMA PRE-FLIGHT DIAGNOSTIC
+    // Try a simple query to ensure the Appraisal schema is up-to-date with new columns
+    try {
+      await prisma.appraisal.findFirst({
+        select: { inspectionDate: true, city: true, state: true, zipCode: true },
+        where: { organizationId: payload.organizationId }
+      });
+    } catch (dbErr: any) {
+      console.error('CRITICAL: Database schema mismatch detected:', dbErr);
+      return NextResponse.json({
+        error: 'Database schema mismatch',
+        message: 'The production database is missing required columns (inspectionDate, city, state, or zipCode). Please run "npx prisma db push" on the server.',
+        details: dbErr.message
+      }, { status: 500 });
+    }
 
     // 1. Sync Properties (Appraisals)
     const syncedProperties = [];
@@ -61,7 +78,6 @@ export async function POST(req: Request) {
           syncedProperties.push({ localId: prop.id, remoteId: appraisal.id });
         } catch (err) {
           console.error(`Failed to sync property ${prop.id}:`, err);
-          // Continue with others
         }
       }
     }
@@ -89,7 +105,40 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Sync Photos
+    // 3. Sync Site Descriptions
+    const syncedSiteDescriptions = [];
+    if (siteDescriptions && Array.isArray(siteDescriptions)) {
+      for (const sd of siteDescriptions as any[]) {
+        try {
+          const appraisal = await prisma.appraisal.findUnique({
+            where: { remoteId: sd.propertyId }
+          });
+
+          if (appraisal) {
+            const syncedSD = await prisma.siteDescription.upsert({
+              where: { appraisalId: appraisal.id },
+              update: {
+                topography: sd.topography,
+                grade: sd.grade,
+                cornerLot: Boolean(sd.cornerLot),
+                updatedAt: new Date(),
+              },
+              create: {
+                appraisalId: appraisal.id,
+                topography: sd.topography,
+                grade: sd.grade,
+                cornerLot: Boolean(sd.cornerLot),
+              }
+            });
+            syncedSiteDescriptions.push({ localId: sd.id, remoteId: syncedSD.id });
+          }
+        } catch (err) {
+          console.error(`Failed to sync site description for prop ${sd.propertyId}:`, err);
+        }
+      }
+    }
+
+    // 4. Sync Photos
     const syncedPhotos = [];
     if (photos && Array.isArray(photos)) {
       for (const p of photos as any[]) {
@@ -142,7 +191,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Sync Sketches
+    // 5. Sync Sketches
     const syncedSketches = [];
     if (sketches && Array.isArray(sketches)) {
       for (const s of sketches as any[]) {
@@ -172,15 +221,15 @@ export async function POST(req: Request) {
       success: true, 
       syncedProperties,
       syncedImprovements,
+      syncedSiteDescriptions,
       syncedPhotos,
       syncedSketches
     });
   } catch (error: any) {
-    console.error('CRITICAL: Push sync error:', error);
+    console.error('CRITICAL: Global Push sync error:', error);
     return NextResponse.json({ 
       error: 'Internal server error', 
       message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
     }, { status: 500 });
   }
 }
