@@ -3,12 +3,12 @@ region: nyc
 services:
   - name: appraisalpro-web
     github:
-      branch: main
-      repo: your-github-name/appraisalpro2.0
+      branch: master
+      repo: logan602/AppraisalPro-Web
       deploy_on_push: true
-    source_dir: appraisalpro-web
+    source_dir: /
     build_command: "npx prisma generate && npm run build"
-    run_command: "npx prisma migrate deploy && npm start"
+    run_command: "npx prisma db push --accept-data-loss && npm start"
     environment_slug: node-js
     instance_count: 1
     instance_size_slug: basic-xxs
