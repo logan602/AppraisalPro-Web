@@ -110,7 +110,11 @@ export async function POST(req: Request) {
           const syncedSketch = await prisma.sketch.upsert({
             where: { appraisalId: appraisal.id },
             update: { data: s.data, updatedAt: new Date() },
-            create: { appraisalId: appraisal.id, data: s.data }
+            create: { 
+              appraisalId: appraisal.id, 
+              organizationId: payload.organizationId,
+              data: s.data 
+            }
           });
           syncedSketches.push({ localId: s.id, remoteId: syncedSketch.id });
         }
