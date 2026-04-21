@@ -1,0 +1,121 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.usagePanel {
+  padding: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.usageInfo h3 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.usageBar {
+  width: 400px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+
+.usageProgress {
+  height: 100%;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+  transition: width 0.3s ease;
+}
+
+.userTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.userTable th {
+  text-align: left;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.userTable td {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.userEmail {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.roleBadge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.roleAdmin {
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+}
+
+.addUserCard {
+  max-width: 400px;
+  padding: 32px;
+}
+
+.formGroup {
+  margin-bottom: 16px;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.formGroup input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: white;
+}
+
+.deleteBtn {
+  color: #ef4444;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: opacity 0.2s;
+}
+
+.deleteBtn:hover {
+  opacity: 0.7;
+}
+
+.empty {
+  text-align: center;
+  padding: 48px;
+  color: var(--text-dim);
+}

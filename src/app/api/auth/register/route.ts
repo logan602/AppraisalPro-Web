@@ -29,7 +29,7 @@ export async function POST(req: Request) {
           name: organizationName || name || email,
           planType: planType === 'ENTERPRISE' ? 'ENTERPRISE' : 'INDIVIDUAL',
           billingCycle: planType === 'ENTERPRISE' ? 'ANNUAL' : 'MONTHLY',
-          maxSeats: planType === 'ENTERPRISE' ? 5 : 1,
+          maxSeats: planType === 'ENTERPRISE' ? 3 : 1,
         },
       });
 

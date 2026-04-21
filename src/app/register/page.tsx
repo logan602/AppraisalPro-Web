@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [orgName, setOrgName] = useState('');
+  const [planType, setPlanType] = useState<'INDIVIDUAL' | 'ENTERPRISE'>('INDIVIDUAL');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -28,7 +29,7 @@ export default function RegisterPage() {
           email, 
           password, 
           organizationName: orgName,
-          planType: 'INDIVIDUAL' // Default for web signup
+          planType
         }),
       });
 
@@ -57,6 +58,29 @@ export default function RegisterPage() {
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
+
+        <div className={styles.planGrid}>
+          <div 
+            className={`${styles.planCard} ${planType === 'INDIVIDUAL' ? styles.active : ''}`}
+            onClick={() => setPlanType('INDIVIDUAL')}
+          >
+            <div className={styles.planIcon}>👤</div>
+            <div className={styles.planInfo}>
+              <h3>Individual</h3>
+              <p>1 user seat included</p>
+            </div>
+          </div>
+          <div 
+            className={`${styles.planCard} ${planType === 'ENTERPRISE' ? styles.active : ''}`}
+            onClick={() => setPlanType('ENTERPRISE')}
+          >
+            <div className={styles.planIcon}>🏢</div>
+            <div className={styles.planInfo}>
+              <h3>Enterprise</h3>
+              <p>3 seats included (1 Admin + 2 Base)</p>
+            </div>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.inputGroup}>
