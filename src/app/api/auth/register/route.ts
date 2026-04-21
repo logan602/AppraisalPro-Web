@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Create Organization + User in a single transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const organization = await tx.organization.create({
         data: {
           name: organizationName || name || email,

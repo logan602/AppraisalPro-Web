@@ -1,48 +1,86 @@
+"use client";
+
 import styles from './page.module.css';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Home() {
+  const { user, isLoading } = useAuth();
+
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.logo}>AppraisalPro</div>
+      <div className={styles.glowBg}></div>
+      
+      <header className={styles.header + " glass-panel"}>
+        <div className={styles.logo}>
+          <div className={styles.logoIcon}></div>
+          <span>AppraisalPro</span>
+        </div>
+        
         <nav className={styles.nav}>
           <Link href="#features" className={styles.navLink}>Features</Link>
           <Link href="#pricing" className={styles.navLink}>Pricing</Link>
+          <Link href="#enterprise" className={styles.navLink}>Enterprise</Link>
         </nav>
+
         <div className={styles.authButtons}>
-          <Link href="/login" className={styles.btnText}>Sign In</Link>
-          <Link href="/register" className={styles.btnPrimary}>Get Started</Link>
+          {!isLoading && user ? (
+            <Link href="/dashboard" className="btn btn-primary">Go to Dashboard</Link>
+          ) : (
+            <>
+              <Link href="/login" className={styles.btnText}>Sign In</Link>
+              <Link href="/register" className="btn btn-primary">Get Started</Link>
+            </>
+          )}
         </div>
       </header>
 
       <main className={styles.hero}>
-        <div className={styles.glowPattern}></div>
-        <h1 className={styles.title}>
-          Modern property inspections, <br />
-          <span className={styles.highlight}>synced securely</span> to the cloud.
-        </h1>
-        <p className={styles.description}>
-          AppraisalPro empowers appraisers with responsive sketching, offline mobile data entry, and seamless multi-device synchronization. Write reports faster.
-        </p>
-        <div className={styles.ctaGroup}>
-          <Link href="/register" className={styles.btnLarge}>Start Free Trial</Link>
-          <Link href="#features" className={styles.btnSecondary}>Watch Demo</Link>
+        <div className={styles.heroContent}>
+          <div className={styles.badgeLine}>
+            <span className="badge" style={{background: 'rgba(16, 185, 129, 0.1)', color: '#10b981'}}>v2.0 Beta Now Live</span>
+          </div>
+          <h1 className={styles.title + " gradient-text"}>
+            The Future of Property <br /> Inspections is Here.
+          </h1>
+          <p className={styles.description}>
+            Empowering modern appraisers with a unified platform for sketching, 
+            data collection, and instant cloud synchronization. Built for speed, 
+            engineered for accuracy.
+          </p>
+          <div className={styles.ctaGroup}>
+            <Link href="/register" className={styles.btnHeroPrimary}>Start Your Free Trial</Link>
+            <Link href="#demo" className={styles.btnHeroSecondary}>Watch the Sync Demo</Link>
+          </div>
+          
+          <div className={styles.devicePreview}>
+            <div className={styles.placeholderDesktop + " glass-panel"}>
+               <div className={styles.browserHeader}>
+                 <span></span><span></span><span></span>
+               </div>
+               <div className={styles.browserContent}>
+                 <p style={{color: 'var(--text-dim)', fontSize: '12px'}}>Web Dashboard Preview</p>
+               </div>
+            </div>
+          </div>
         </div>
       </main>
 
       <section id="features" className={styles.features}>
-        <div className={styles.featureCard}>
-          <h3 className={styles.featureTitle}>Offline Mobile App</h3>
-          <p className={styles.featureText}>Fully functional native iOS and Android apps. Collect photos and sketched plans directly in the field without an internet connection.</p>
+        <div className={styles.featureCard + " glass-panel"}>
+          <div className={styles.featureIcon}>📱</div>
+          <h3 className={styles.featureTitle}>Offline-First Mobile</h3>
+          <p className={styles.featureText}>Full native performance for iOS and Android. Inspect anywhere, even without cellular service.</p>
         </div>
-        <div className={styles.featureCard}>
-          <h3 className={styles.featureTitle}>Instant Cloud Sync</h3>
-          <p className={styles.featureText}>The moment you connect to Wi-Fi, your data syncs securely to our DigitalOcean enterprise infrastructure. Accessible instantly on your desktop.</p>
+        <div className={styles.featureCard + " glass-panel"}>
+          <div className={styles.featureIcon}>☁️</div>
+          <h3 className={styles.featureTitle}>Enterprise Cloud Sync</h3>
+          <p className={styles.featureText}>Secure, automatic synchronization fueled by DigitalOcean and Postgres. Your data is always safe.</p>
         </div>
-        <div className={styles.featureCard}>
-          <h3 className={styles.featureTitle}>Advanced Sketching</h3>
-          <p className={styles.featureText}>Create professional-grade floorplans on site. Snap-to-grid, customizable rooms, and perfect multi-story handling designed for speed.</p>
+        <div className={styles.featureCard + " glass-panel"}>
+          <div className={styles.featureIcon}>🏙️</div>
+          <h3 className={styles.featureTitle}>Desktop Insights</h3>
+          <p className={styles.featureText}>Powerful web dashboard to review, edit, and export your field observations in high resolution.</p>
         </div>
       </section>
     </div>

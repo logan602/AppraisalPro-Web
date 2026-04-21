@@ -33,7 +33,6 @@ export async function GET(req: Request) {
         _count: {
           select: { photos: true }
         },
-        createdByUserId: false, // We'll handle this if needed
       },
       orderBy: { updatedAt: 'desc' }
     });

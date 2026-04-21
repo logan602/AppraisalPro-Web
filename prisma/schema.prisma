@@ -82,6 +82,7 @@ model Improvement {
 
   data            Json?     // Stores all improvement form fields as a JSON blob for flexibility
   
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
 
@@ -94,6 +95,7 @@ model SiteDescription {
   grade           String?
   cornerLot       Boolean?
   
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
 
@@ -104,6 +106,7 @@ model Sketch {
 
   data            String?   // JSON string of sketch points/lines
   
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
 
@@ -120,5 +123,6 @@ model Photo {
   latitude        Float?
   longitude       Float?
 
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }

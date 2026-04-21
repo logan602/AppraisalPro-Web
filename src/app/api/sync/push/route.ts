@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     // 1. Sync Properties (Appraisals)
     const syncedProperties = [];
     if (properties && Array.isArray(properties)) {
-      for (const prop of properties) {
+      for (const prop of properties as any[]) {
         const appraisal = await prisma.appraisal.upsert({
           where: { remoteId: prop.id },
           update: {
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     // 2. Sync Improvements
     const syncedImprovements = [];
     if (improvements && Array.isArray(improvements)) {
-      for (const imp of improvements) {
+      for (const imp of improvements as any[]) {
         // Find appraisal by local propertyId mapping
         const appraisal = await prisma.appraisal.findUnique({
           where: { remoteId: imp.propertyId }
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     // 3. Sync Photos (Metadata only, files are already in S3)
     const syncedPhotos = [];
     if (photos && Array.isArray(photos)) {
-      for (const p of photos) {
+      for (const p of photos as any[]) {
         const appraisal = await prisma.appraisal.findUnique({
           where: { remoteId: p.propertyId }
         });
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     // 4. Sync Sketches
     const syncedSketches = [];
     if (sketches && Array.isArray(sketches)) {
-      for (const s of sketches) {
+      for (const s of sketches as any[]) {
         const appraisal = await prisma.appraisal.findUnique({
           where: { remoteId: s.propertyId }
         });
