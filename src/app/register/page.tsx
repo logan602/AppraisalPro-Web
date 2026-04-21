@@ -35,7 +35,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.details || data.error || 'Registration failed');
+        throw new Error(data.error || 'Registration failed');
       }
 
       // Auto-login after registration

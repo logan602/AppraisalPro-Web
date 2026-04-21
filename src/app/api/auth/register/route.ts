@@ -67,11 +67,8 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json({ 
-      error: 'Registration failed', 
-      details: error.message || 'Unknown server error' 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
