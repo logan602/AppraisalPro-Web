@@ -105,7 +105,7 @@ export default function SketcherPage() {
     return (
       <div className={styles.editorOverlay}>
         <div className={styles.editorHeader}>
-          <h2>{currentSketch?.name || 'New Blueprint'}</h2>
+          <h2>{currentSketch?.name || 'New Sketch'}</h2>
           <button className="btn" onClick={() => setIsEditorOpen(false)}>Close Editor</button>
         </div>
         <Sketcher 
@@ -120,20 +120,20 @@ export default function SketcherPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.titleGroup}>
-          <h1 className="gradient-text">Blueprint Studio</h1>
+          <h1 className="gradient-text">Sketch Studio</h1>
           <p>Draft standalone floor plans and assign them to inspections later.</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setCurrentSketch(null); setIsEditorOpen(true); }}>
-          + New Blueprint
+          + New Sketch
         </button>
       </div>
 
       {isLoading ? (
-        <div className={styles.loading}>Loading blueprints...</div>
+        <div className={styles.loading}>Loading sketches...</div>
       ) : sketches.length === 0 ? (
         <div className={styles.emptyState + " glass-panel"}>
           <div className={styles.emptyIcon}>📐</div>
-          <h3>No blueprints found</h3>
+          <h3>No sketches found</h3>
           <p>Create your first standalone sketch to get started.</p>
         </div>
       ) : (

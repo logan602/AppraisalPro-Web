@@ -41,7 +41,7 @@ export default function DashboardLayout({
   const navItems = [
     { name: 'Appraisals', path: '/dashboard', icon: '📋' },
     { name: 'Analytics', path: '/dashboard/analytics', icon: '📈' },
-    { name: 'Blueprint Studio', path: '/dashboard/sketcher', icon: '📐' },
+    { name: 'Sketch Studio', path: '/dashboard/sketcher', icon: '📐' },
     { name: 'Team', path: '/dashboard/users', icon: '👥', adminOnly: true },
     { name: 'Organization', path: '/dashboard/settings', icon: '🏢' },
     { name: 'Support', path: '/dashboard/support', icon: '🎧' },

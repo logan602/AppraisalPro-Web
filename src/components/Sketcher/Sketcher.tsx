@@ -46,11 +46,54 @@ export default function Sketcher({ onSave, initialData }: Props) {
   const [dimInput, setDimInput] = useState('');
   const [waitingForStart, setWaitingForStart] = useState(shapes.length === 0);
   
+  const [pendingWall, setPendingWall] = useState<{ angle: number, feet: number } | null>(null);
+  
   // Camera
   const [camera, setCamera] = useState({ x: 0, y: 0, z: 1 });
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const active = shapes[activeIdx];
+
+  // Map directions to angles (degrees)
+  const DIR_ANGLES: any = { N: -90, S: 90, E: 0, W: 180, NE: -45, NW: -135, SE: 45, SW: 135 };
+
+  const handleDirection = useCallback((dir: string) => {
+    if (!active || active.closed) return;
+    const feet = parseFloat(dimInput);
+    if (isNaN(feet) || feet <= 0) return;
+    if (active.points.length === 0) return;
+
+    setPendingWall({ angle: DIR_ANGLES[dir], feet });
+    setDimInput('');
+  }, [active, activeIdx, dimInput]);
+
+  const finalizeWall = useCallback(() => {
+    if (!active || !pendingWall) return;
+
+    const last = active.points[active.points.length - 1];
+    const rad = (pendingWall.angle * Math.PI) / 180;
+    const newPt = {
+      x: last.x + Math.cos(rad) * pendingWall.feet * SCALE,
+      y: last.y + Math.sin(rad) * pendingWall.feet * SCALE
+    };
+
+    const first = active.points[0];
+    const closing = active.points.length >= 2 && 
+      Math.abs(newPt.x - first.x) < 15 && Math.abs(newPt.y - first.y) < 15;
+
+    const nextShapes = shapes.map((s, i) => {
+      if (i !== activeIdx) return s;
+      return {
+        ...s,
+        points: closing ? s.points : [...s.points, newPt],
+        walls: [...s.walls, { dir: 'custom', feet: pendingWall.feet }],
+        closed: closing
+      };
+    });
+
+    setShapes(nextShapes);
+    setPendingWall(null);
+  }, [active, activeIdx, pendingWall, shapes]);
 
   // Area Calc
   const totalSqFt = shapes.reduce((sum, s) => {
@@ -93,36 +136,21 @@ export default function Sketcher({ onSave, initialData }: Props) {
     setWaitingForStart(false);
   };
 
-  const handleDirection = useCallback((dir: string) => {
-    if (!active || active.closed) return;
-    const feet = parseFloat(dimInput);
-    if (isNaN(feet) || feet <= 0) return;
-    if (active.points.length === 0) return;
-
-    const { dx, dy } = DIRECTIONS[dir];
+  const getAngleBetween = useCallback(() => {
+    if (!active || active.points.length < 1 || !pendingWall) return null;
     const last = active.points[active.points.length - 1];
-    const newPt = {
-      x: last.x + dx * feet * SCALE,
-      y: last.y + dy * feet * SCALE
-    };
-
-    const first = active.points[0];
-    const closing = active.points.length >= 2 && 
-      Math.abs(newPt.x - first.x) < 15 && Math.abs(newPt.y - first.y) < 15;
-
-    const nextShapes = shapes.map((s, i) => {
-      if (i !== activeIdx) return s;
-      return {
-        ...s,
-        points: closing ? s.points : [...s.points, newPt],
-        walls: [...s.walls, { dir, feet }],
-        closed: closing
-      };
-    });
-
-    setShapes(nextShapes);
-    setDimInput('');
-  }, [active, activeIdx, dimInput, shapes]);
+    const prev = active.points.length >= 2 ? active.points[active.points.length - 2] : null;
+    
+    if (!prev) return '90.0'; // Default for vertical start
+    
+    // Angle of the previous wall
+    const prevAngle = Math.atan2(last.y - prev.y, last.x - prev.x) * (180 / Math.PI);
+    
+    // Difference (Exterior angle converted to interior/relative)
+    let diff = Math.abs(pendingWall.angle - prevAngle);
+    if (diff > 180) diff = 360 - diff;
+    return (180 - diff).toFixed(1);
+  }, [active, pendingWall]);
 
   // Auto-Zoom Logic
   const fitView = useCallback(() => {
@@ -194,7 +222,15 @@ export default function Sketcher({ onSave, initialData }: Props) {
         setDimInput(v => v.slice(0, -1));
       }
       
-      // Directions via arrows only (primary directions)
+      // Directions via arrows or rotation
+      if (pendingWall) {
+        if (e.key === 'ArrowUp') setPendingWall(p => p ? { ...p, angle: p.angle - 15 } : null);
+        if (e.key === 'ArrowDown') setPendingWall(p => p ? { ...p, angle: p.angle + 15 } : null);
+        if (e.key === 'Enter') finalizeWall();
+        if (e.key === 'Escape') setPendingWall(null);
+        return;
+      }
+
       if (e.key === 'ArrowUp') handleDirection('N');
       if (e.key === 'ArrowDown') handleDirection('S');
       if (e.key === 'ArrowLeft') handleDirection('W');
@@ -203,14 +239,14 @@ export default function Sketcher({ onSave, initialData }: Props) {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleDirection]);
+  }, [handleDirection, pendingWall, finalizeWall]);
 
   return (
     <div className={styles.sketcher}>
       <div className={styles.toolbar}>
         <button className={styles.toolBtn} onClick={addShape}>➕ Add Area</button>
         <button className={styles.toolBtn} onClick={handleExport}>📥 Download Image</button>
-        <button className={styles.toolBtn} onClick={() => onSave({ shapes })}>💾 Save Blueprint</button>
+        <button className={styles.toolBtn} onClick={() => onSave({ shapes })}>💾 Save Sketch</button>
         <button className={styles.toolBtn} onClick={() => setShapes([])}>🗑️ Clear</button>
       </div>
 
@@ -241,6 +277,8 @@ export default function Sketcher({ onSave, initialData }: Props) {
           {shapes.map((s, idx) => {
             if (s.points.length === 0) return null;
             const pts = s.points.map(p => `${p.x},${p.y}`).join(' ');
+            const isActive = idx === activeIdx;
+            
             return (
               <g key={s.id}>
                 {s.closed ? (
@@ -249,7 +287,7 @@ export default function Sketcher({ onSave, initialData }: Props) {
                     fill={s.color} 
                     fillOpacity="0.1" 
                     stroke={s.color} 
-                    strokeWidth={idx === activeIdx ? "3" : "1.5"} 
+                    strokeWidth={isActive ? "3" : "1.5"} 
                   />
                 ) : (
                   <polyline 
@@ -259,6 +297,41 @@ export default function Sketcher({ onSave, initialData }: Props) {
                     strokeWidth="3" 
                   />
                 )}
+
+                {/* Pending Wall Preview */}
+                {isActive && pendingWall && s.points.length > 0 && (
+                  <g>
+                    {(() => {
+                      const last = s.points[s.points.length - 1];
+                      const rad = (pendingWall.angle * Math.PI) / 180;
+                      const tx = last.x + Math.cos(rad) * pendingWall.feet * SCALE;
+                      const ty = last.y + Math.sin(rad) * pendingWall.feet * SCALE;
+                      const angleText = getAngleBetween();
+                      
+                      return (
+                        <>
+                          <line 
+                            x1={last.x} y1={last.y} x2={tx} y2={ty} 
+                            stroke={s.color} strokeWidth="3" strokeDasharray="5,5" 
+                          />
+                          <circle cx={tx} cy={ty} r="4" fill={s.color} opacity="0.5" />
+                          
+                          {/* Angle Label */}
+                          <g transform={`translate(${last.x}, ${last.y})`}>
+                            <rect x="10" y="-30" width="60" height="20" rx="4" fill="rgba(0,0,0,0.8)" />
+                            <text x="15" y="-16" fill="var(--primary)" fontSize="12" fontWeight="bold">
+                              {angleText}°
+                            </text>
+                            <text x="50" y="-16" fill="white" fontSize="10">
+                              {pendingWall.feet}'
+                            </text>
+                          </g>
+                        </>
+                      );
+                    })()}
+                  </g>
+                )}
+
                 {/* Nodes */}
                 {s.points.map((p, i) => (
                   <circle key={i} cx={p.x} cy={p.y} r="4" fill={s.color} />
