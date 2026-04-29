@@ -18,6 +18,7 @@ const getDatabaseUrl = (): string => {
   } else if (!normalized.includes("sslmode=")) {
     normalized += (normalized.includes("?") ? "&" : "?") + "sslmode=no-verify";
   }
+  console.log(`[INFO] Initializing Prisma with ${normalized.split('@')[1] || 'local'} datasource`);
   return normalized;
 }
 

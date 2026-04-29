@@ -22,14 +22,39 @@ function safeParseDate(d: any) {
   return isNaN(date.getTime()) ? null : date;
 }
 
+export const maxDuration = 60; // Allow 1 minute for complex syncs
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
-    const payload = verifyToken(req);
-    if (!payload || !payload.userId || !payload.organizationId) {
-      return NextResponse.json({ error: 'Unauthorized: Missing user or organization context' }, { status: 401 });
+    // 0. Diagnostic Ping
+    // If the mobile app sends an x-ping header, return the server status immediately
+    if (req.headers.get('x-ping') === 'true') {
+      return NextResponse.json({ status: 'live', timestamp: new Date().toISOString() });
     }
 
-    const body = await req.json();
+    const payload = verifyToken(req);
+    if (!payload || !payload.userId || !payload.organizationId) {
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        code: '[PUSH_AUTH_FAIL]',
+        message: 'Missing user or organization context' 
+      }, { status: 401 });
+    }
+
+    // Attempt to parse body with a check for empty payload
+    let body;
+    try {
+      body = await req.json();
+    } catch (parseErr: any) {
+      console.error('CRITICAL: Body parse failure:', parseErr);
+      return NextResponse.json({ 
+        error: 'MALFORMED_PAYLOAD', 
+        code: '[PUSH_PARSE_FAIL]',
+        message: parseErr.message 
+      }, { status: 400 });
+    }
+
     const { properties, improvements, photos, sketches, siteDescriptions } = body;
 
     // SCHEMA PRE-FLIGHT DIAGNOSTIC
@@ -121,7 +146,6 @@ export async function POST(req: Request) {
                 topography: sd.topography,
                 grade: sd.grade,
                 cornerLot: Boolean(sd.cornerLot),
-                updatedAt: new Date(),
               },
               create: {
                 appraisalId: appraisal.id,
@@ -202,7 +226,7 @@ export async function POST(req: Request) {
           if (appraisal) {
             const syncedSketch = await prisma.sketch.upsert({
               where: { appraisalId: appraisal.id },
-              update: { data: s.data, updatedAt: new Date() },
+              update: { data: s.data },
               create: { 
                 appraisalId: appraisal.id, 
                 organizationId: payload.organizationId,
@@ -228,7 +252,8 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('CRITICAL: Global Push sync error:', error);
     return NextResponse.json({ 
-      error: 'Internal server error', 
+      error: 'SYNCHRONIZATION_CRASH', 
+      code: '[PUSH_GLOBAL_SYNC_FAIL]',
       message: error.message,
     }, { status: 500 });
   }

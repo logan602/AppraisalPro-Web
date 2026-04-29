@@ -100,7 +100,7 @@ model SiteDescription {
   topography      String?
   grade           String?
   cornerLot       Boolean?
-  
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }

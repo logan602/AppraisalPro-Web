@@ -12,6 +12,13 @@
   border-bottom: 1px solid var(--border);
 }
 
+.exportGroup {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .titleGroup h1 {
   font-size: 32px;
   margin-bottom: 8px;
@@ -94,7 +101,7 @@
   display: flex;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 1px border var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .dataRow:last-child {
@@ -149,14 +156,15 @@
 }
 
 .sketchContainer {
-  height: 500px;
+  padding: 24px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .canvasPlaceholder {
   color: var(--text-dim);
   font-style: italic;
+  text-align: center;
+  padding: 60px;
 }
