@@ -8,7 +8,8 @@ export async function GET() {
         ...process.env,
         DATABASE_URL: process.env.REAL_DATABASE_URL || process.env.DATABASE_URL
       },
-      encoding: 'utf-8'
+      encoding: 'utf-8',
+      timeout: 60000,
     });
     return NextResponse.json({ success: true, output });
   } catch (error: any) {
