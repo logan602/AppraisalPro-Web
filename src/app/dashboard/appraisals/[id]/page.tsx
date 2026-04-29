@@ -128,6 +128,14 @@ export default function AppraisalDetailPage({ params }: { params: Promise<{ id: 
                 </span>
               </div>
               <div className={styles.dataRow}>
+                <span className={styles.label}>Property Type</span>
+                <span className={styles.value}>{(appraisal as any).propertyType || 'N/A'}</span>
+              </div>
+              <div className={styles.dataRow}>
+                <span className={styles.label}>Tenancy</span>
+                <span className={styles.value}>{(appraisal as any).tenancy || 'N/A'}</span>
+              </div>
+              <div className={styles.dataRow}>
                 <span className={styles.label}>Status</span>
                 <span className={styles.value} style={{textTransform:'capitalize'}}>{appraisal.status}</span>
               </div>
