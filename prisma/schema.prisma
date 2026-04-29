@@ -67,6 +67,15 @@ model Appraisal {
   state            String?
   zipCode          String?
   inspectionDate   DateTime?
+  
+  propertyType     String?
+  tenancy          String?
+  numUnits         String?
+  ownerOccupiedUnits String?
+  tenantOccupiedUnits String?
+  unitsInspected   String?
+  separatelyMetered String?
+  
   status           String       @default("draft")
   
   remoteId         String?      @unique

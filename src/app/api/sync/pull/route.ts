@@ -36,12 +36,28 @@ export async function GET(req: Request) {
       where: {
         organizationId: user.organizationId,
         deletedAt: null
+      },
+      include: {
+        improvement: true,
+        siteDescription: true,
+        sketch: true,
+        photos: true
       }
     });
 
+    const properties = appraisals;
+    const improvements = appraisals.map(a => a.improvement).filter(Boolean);
+    const siteDescriptions = appraisals.map(a => a.siteDescription).filter(Boolean);
+    const sketches = appraisals.map(a => a.sketch).filter(Boolean);
+    const photos = appraisals.flatMap(a => a.photos);
+
     return NextResponse.json({ 
       success: true, 
-      properties: appraisals 
+      properties,
+      improvements,
+      siteDescriptions,
+      sketches,
+      photos
     });
   } catch (error) {
     console.error('Pull sync error:', error);
