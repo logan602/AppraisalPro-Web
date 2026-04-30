@@ -330,15 +330,18 @@ export async function GET(
           if (!res.ok) return;
           const arrayBuffer = await res.arrayBuffer();
           
-          // Generate a clean filename: e.g. "Front_View.jpg" or "Photo_1.jpg"
-          const baseName = photo.caption ? photo.caption.replace(/[^a-z0-9]/gi, '_') : `Photo_${index + 1}`;
+          // Generate a clean, unique filename: e.g. "Front_View_1.jpg"
+          let baseName = photo.caption ? photo.caption.replace(/[^a-z0-9]/gi, '_') : `Photo`;
+          // Always append index to ensure no duplicate captions overwrite each other
+          baseName = `${baseName}_${index + 1}`;
+
           let ext = '.jpg';
           if (photo.fileName && photo.fileName.includes('.')) {
             ext = '.' + photo.fileName.split('.').pop();
           }
           const fileName = `${baseName}${ext}`;
           
-          zip.file(fileName, arrayBuffer);
+          zip.file(fileName, new Uint8Array(arrayBuffer));
         } catch (err) {
           console.error(`Failed to zip photo ${photo.id}:`, err);
         }
