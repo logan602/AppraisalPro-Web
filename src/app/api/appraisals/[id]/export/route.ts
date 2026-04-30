@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import JSZip from 'jszip';
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { s3Client } from "@/lib/s3";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-development';
+const BUCKET_NAME = process.env.SPACES_BUCKET || 'appraisalpro-bckt';
 
 function verifyToken(req: Request) {
   // Accept token from Authorization header OR query param (for window.open links)
@@ -304,6 +308,24 @@ export async function GET(
 
     if (!appraisal) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    // Generate pre-signed GET URLs for all photos in case the bucket is fully private
+    if (appraisal.photos && appraisal.photos.length > 0) {
+      for (const photo of appraisal.photos) {
+        if (photo.s3Key) {
+          try {
+            const command = new GetObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: photo.s3Key,
+            });
+            // Generate a URL valid for 60 minutes
+            photo.url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+          } catch (e) {
+            console.error(`Failed to sign URL for photo ${photo.id}:`, e);
+          }
+        }
+      }
     }
 
     let html = '';
