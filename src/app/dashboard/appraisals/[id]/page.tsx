@@ -49,7 +49,7 @@ export default function AppraisalDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const handleExport = (type: 'notes' | 'sketch' | 'photos') => {
+  const handleExport = (type: 'notes' | 'sketch' | 'photos' | 'photos-zip') => {
     window.open(`/api/appraisals/${id}/export?type=${type}&token=${token}`, '_blank');
   };
 
@@ -92,7 +92,8 @@ export default function AppraisalDetailPage({ params }: { params: Promise<{ id: 
         <div className={styles.exportGroup}>
           <button className="btn btn-secondary" onClick={() => handleExport('notes')}>📄 Export Notes</button>
           <button className="btn btn-primary"   onClick={() => handleExport('sketch')}>📐 Export Sketch</button>
-          <button className="btn btn-primary"   onClick={() => handleExport('photos')} style={{ background: '#27ae60' }}>🖼️ Export Photos</button>
+          <button className="btn btn-primary"   onClick={() => handleExport('photos')} style={{ background: '#27ae60' }}>📄 Photos (PDF)</button>
+          <button className="btn btn-primary"   onClick={() => handleExport('photos-zip')} style={{ background: '#e67e22' }}>🗂️ Photos (ZIP)</button>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import JSZip from 'jszip';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-development';
 
@@ -313,6 +314,44 @@ export async function GET(
       html = generateSketchHTML(appraisal.sketch.data);
     } else if (type === 'photos') {
       html = generatePhotosHTML(appraisal.photos || []);
+    } else if (type === 'photos-zip') {
+      const photos = appraisal.photos || [];
+      if (photos.length === 0) {
+        return NextResponse.json({ error: 'No photos to export' }, { status: 404 });
+      }
+
+      const zip = new JSZip();
+      
+      // Fetch all photos and add them to the zip
+      await Promise.all(photos.map(async (photo, index) => {
+        try {
+          if (!photo.url) return;
+          const res = await fetch(photo.url);
+          if (!res.ok) return;
+          const arrayBuffer = await res.arrayBuffer();
+          
+          // Generate a clean filename: e.g. "Front_View.jpg" or "Photo_1.jpg"
+          const baseName = photo.caption ? photo.caption.replace(/[^a-z0-9]/gi, '_') : `Photo_${index + 1}`;
+          let ext = '.jpg';
+          if (photo.fileName && photo.fileName.includes('.')) {
+            ext = '.' + photo.fileName.split('.').pop();
+          }
+          const fileName = `${baseName}${ext}`;
+          
+          zip.file(fileName, arrayBuffer);
+        } catch (err) {
+          console.error(`Failed to zip photo ${photo.id}:`, err);
+        }
+      }));
+
+      const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      return new Response(zipBuffer, {
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="appraisal_${id}_photos.zip"`
+        }
+      });
     } else {
       html = generateNotesHTML(appraisal);
     }
