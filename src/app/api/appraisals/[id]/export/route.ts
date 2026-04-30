@@ -344,9 +344,9 @@ export async function GET(
         }
       }));
 
-      const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const zipBuffer = await zip.generateAsync({ type: 'uint8array' });
 
-      return new Response(zipBuffer, {
+      return new Response(zipBuffer as any, {
         headers: {
           'Content-Type': 'application/zip',
           'Content-Disposition': `attachment; filename="appraisal_${id}_photos.zip"`
