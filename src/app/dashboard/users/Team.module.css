@@ -10,6 +10,11 @@
   align-items: flex-end;
 }
 
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
 .usagePanel {
   padding: 32px;
   display: flex;

@@ -16,6 +16,7 @@ export default function TeamPage() {
   const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [maxSeats, setMaxSeats] = useState(1);
+  const [planType, setPlanType] = useState('INDIVIDUAL');
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
@@ -40,6 +41,7 @@ export default function TeamPage() {
       if (!res.ok) throw new Error(data.error);
       setUsers(data.users);
       setMaxSeats(data.maxSeats);
+      setPlanType(data.planType);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -108,6 +110,27 @@ export default function TeamPage() {
     }
   };
 
+  const handleUpgrade = async () => {
+    if (!confirm('Would you like to upgrade to the Enterprise plan? This will unlock team collaboration and 5 initial seats.')) return;
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'upgrade' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPlanType(data.planType);
+      setMaxSeats(data.maxSeats);
+      alert('Congratulations! Your organization has been upgraded to Enterprise.');
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   if (isLoading) return <div>Loading team...</div>;
 
   return (
@@ -118,9 +141,17 @@ export default function TeamPage() {
           <p>Manage users and access for your organization</p>
         </div>
         {currentUser?.role === 'ADMIN' && (
-          <button onClick={handleExpandTeam} className="btn btn-secondary">
-            Expand Team Seats
-          </button>
+          <div className={styles.headerActions}>
+            {planType === 'INDIVIDUAL' ? (
+              <button onClick={handleUpgrade} className="btn btn-primary" style={{ background: 'var(--accent-gradient)' }}>
+                🚀 Upgrade to Enterprise
+              </button>
+            ) : (
+              <button onClick={handleExpandTeam} className="btn btn-secondary">
+                Expand Team Seats
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -136,7 +167,9 @@ export default function TeamPage() {
           </div>
         </div>
         <div className={styles.usageMeta}>
-          <span className="badge">Active Organization</span>
+          <span className="badge" style={{ background: planType === 'ENTERPRISE' ? '#f59e0b' : '#3b82f6' }}>
+            {planType === 'ENTERPRISE' ? 'Enterprise Plan' : 'Individual Plan'}
+          </span>
         </div>
       </div>
 

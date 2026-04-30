@@ -37,10 +37,14 @@ export async function GET(req: Request) {
 
     const organization = await prisma.organization.findUnique({
       where: { id: payload.organizationId },
-      select: { maxSeats: true }
+      select: { maxSeats: true, planType: true }
     });
 
-    return NextResponse.json({ users, maxSeats: organization?.maxSeats || 1 });
+    return NextResponse.json({ 
+      users, 
+      maxSeats: organization?.maxSeats || 1,
+      planType: organization?.planType || 'INDIVIDUAL'
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -102,13 +106,25 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Placeholder for seat expansion (adds 1 seat manually for now)
-    const org = await prisma.organization.update({
-      where: { id: payload.organizationId },
-      data: { maxSeats: { increment: 1 } }
-    });
+    const body = await req.json().catch(() => ({}));
 
-    return NextResponse.json({ success: true, maxSeats: org.maxSeats });
+    if (body.action === 'upgrade') {
+      const org = await prisma.organization.update({
+        where: { id: payload.organizationId },
+        data: { 
+          planType: 'ENTERPRISE',
+          maxSeats: 5 // Grant 5 seats for Enterprise plan
+        }
+      });
+      return NextResponse.json({ success: true, planType: org.planType, maxSeats: org.maxSeats });
+    } else {
+      // Manual seat expansion for Enterprise users
+      const org = await prisma.organization.update({
+        where: { id: payload.organizationId },
+        data: { maxSeats: { increment: 1 } }
+      });
+      return NextResponse.json({ success: true, maxSeats: org.maxSeats });
+    }
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
