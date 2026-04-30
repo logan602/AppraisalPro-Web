@@ -21,8 +21,18 @@ export async function DELETE(
 ) {
   try {
     const payload = verifyToken(req);
-    if (!payload || payload.role !== 'ADMIN') {
+    if (!payload || !payload.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Verify role from DB
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true }
+    });
+
+    if (user?.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 403 });
     }
 
     const { id } = await params;

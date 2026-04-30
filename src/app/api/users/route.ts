@@ -53,7 +53,17 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const payload = verifyToken(req);
-    if (!payload || payload.role !== 'ADMIN') {
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify role from DB
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true }
+    });
+
+    if (user?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Only admins can add users' }, { status: 403 });
     }
 
