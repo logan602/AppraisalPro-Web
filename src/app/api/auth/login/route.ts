@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
     // Generate JWT with organizationId for tenant isolation in sync routes
     const token = jwt.sign(
-      { userId: user.id, email: user.email, organizationId: user.organizationId },
+      { userId: user.id, email: user.email, organizationId: user.organizationId, role: user.role },
       JWT_SECRET,
       { expiresIn: '30d' }
     );

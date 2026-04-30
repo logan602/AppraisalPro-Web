@@ -102,8 +102,18 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const payload = verifyToken(req);
-    if (!payload || payload.role !== 'ADMIN') {
+    if (!payload || !payload.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Verify role from DB since role might be missing from legacy JWTs
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true }
+    });
+
+    if (user?.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
