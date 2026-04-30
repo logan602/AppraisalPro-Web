@@ -252,6 +252,36 @@ function generateSketchHTML(sketchData: string): string {
   </body></html>`;
 }
 
+function generatePhotosHTML(photos: any[]): string {
+  if (!photos || photos.length === 0) return '<html><body>No photos available.</body></html>';
+
+  const photoCards = photos.map((p) => `
+    <div style="break-inside: avoid; margin-bottom: 30px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fff;">
+      <img src="${p.url}" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: 4px;" alt="${p.caption || 'Photo'}" />
+      ${p.caption ? `<div style="margin-top: 10px; font-weight: bold; color: #333; text-align: center;">${p.caption}</div>` : ''}
+      <div style="margin-top: 5px; font-size: 0.8em; color: #888; text-align: center;">
+        ${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}
+      </div>
+    </div>
+  `).join('');
+
+  return `<html><head><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    body { font-family: Helvetica, sans-serif; padding: 40px; background: #f9f9f9; }
+    h1 { color: #1a1f3c; margin-bottom: 30px; text-align: center; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+    @media print {
+      body { background: white; padding: 0; }
+      .gallery { display: block; }
+    }
+  </style></head><body>
+    <h1>Inspection Photos</h1>
+    <div class="gallery">
+      ${photoCards}
+    </div>
+  </body></html>`;
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -268,7 +298,7 @@ export async function GET(
 
     const appraisal = await prisma.appraisal.findFirst({
       where: { id, organizationId: payload.organizationId },
-      include: { improvement: true, siteDescription: true, sketch: true }
+      include: { improvement: true, siteDescription: true, sketch: true, photos: true }
     });
 
     if (!appraisal) {
@@ -281,6 +311,8 @@ export async function GET(
         return NextResponse.json({ error: 'No sketch data found' }, { status: 404 });
       }
       html = generateSketchHTML(appraisal.sketch.data);
+    } else if (type === 'photos') {
+      html = generatePhotosHTML(appraisal.photos || []);
     } else {
       html = generateNotesHTML(appraisal);
     }
