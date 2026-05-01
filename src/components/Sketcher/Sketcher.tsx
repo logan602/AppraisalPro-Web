@@ -96,6 +96,9 @@ export default function Sketcher({ onSave, initialData }: Props) {
 
     setShapes(nextShapes);
     setPendingWall(null);
+    if (closing) {
+      setEditingAreaIdx(activeIdx);
+    }
   }, [active, activeIdx, pendingWall, shapes]);
 
   // Area Calc
@@ -213,51 +216,74 @@ export default function Sketcher({ onSave, initialData }: Props) {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const tableHeight = (shapes.filter(s => s.closed).length * 60) + 120;
+      const closedShapes = shapes.filter(s => s.closed);
+      const tableHeight = (closedShapes.length * 60) + 160;
       canvas.width = 1600;
       canvas.height = 1200 + tableHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         // 1. Background
-        ctx.fillStyle = '#0b0f1a';
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, 1600, 1200 + tableHeight);
         
-        // 2. Draw Sketch
-        ctx.drawImage(img, 0, 0, 1600, 1200);
+        // 2. Title
+        ctx.fillStyle = '#1a1f3c';
+        ctx.font = 'bold 48px Helvetica, Arial, sans-serif';
+        ctx.fillText('PROPERTY SKETCH', 60, 100);
+
+        // 3. Draw Sketch
+        // Create a temporary canvas to fix SVG colors for white background if needed
+        // but the SVG already has white labels/etc. Wait, if the background is white, 
+        // the white text in SVG will be invisible. 
+        // I should probably invert colors or ensure SVG is readable.
+        // Actually, the SVG in Sketcher.tsx uses 'white' for labels (line 394, 401).
+        // I need to make sure the exported image is readable on white.
+        ctx.drawImage(img, 0, 150, 1600, 1000);
         
-        // 3. Draw Summary Table
-        ctx.fillStyle = 'rgba(255,255,255,0.05)';
-        ctx.fillRect(0, 1200, 1600, tableHeight);
+        // 4. Draw Summary Table
+        const tableY = 1150;
+        ctx.fillStyle = '#f8f9fa';
+        ctx.fillRect(0, tableY, 1600, 80);
         
-        ctx.fillStyle = 'var(--primary)';
-        ctx.font = 'bold 32px Inter, sans-serif';
-        ctx.fillText('CALCULATIONS SUMMARY', 60, 1280);
+        ctx.fillStyle = '#1a1f3c';
+        ctx.font = 'bold 24px Helvetica, Arial, sans-serif';
+        ctx.fillText('AREA NAME', 60, tableY + 50);
+        ctx.fillText('MULTIPLIER', 600, tableY + 50);
+        ctx.fillText('CALCULATED AREA', 1000, tableY + 50);
         
-        ctx.font = '18px Inter, sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillText('AREA NAME', 60, 1340);
-        ctx.fillText('SQ FT', 600, 1340);
-        ctx.fillText('MULT', 800, 1340);
-        ctx.fillText('ADJUSTED TOTAL', 1000, 1340);
+        let y = tableY + 130;
+        let totalArea = 0;
         
-        let y = 1400;
-        shapes.filter(s => s.closed).forEach(s => {
+        closedShapes.forEach(s => {
           const rawArea = shoelace(s.points) / (SCALE * SCALE);
           const adjArea = rawArea * s.multiplier;
+          totalArea += adjArea;
           
-          ctx.fillStyle = 'white';
-          ctx.font = 'bold 24px Inter, sans-serif';
-          ctx.fillText(s.name.toUpperCase(), 60, y);
+          ctx.fillStyle = '#333';
+          ctx.font = 'bold 24px Helvetica, Arial, sans-serif';
+          ctx.fillText((s.name || s.label).toUpperCase(), 60, y);
           
-          ctx.font = '22px Inter, sans-serif';
-          ctx.fillText(rawArea.toFixed(0), 600, y);
-          ctx.fillText(`${s.multiplier.toFixed(2)}x`, 800, y);
+          ctx.font = '22px Helvetica, Arial, sans-serif';
+          ctx.fillText(`${s.multiplier.toFixed(2)}x`, 600, y);
           
           ctx.fillStyle = s.color;
-          ctx.fillText(`${adjArea.toFixed(0)} SQ FT`, 1000, y);
+          ctx.fillText(`${adjArea.toLocaleString(undefined, {maximumFractionDigits: 0})} SQ FT`, 1000, y);
           
           y += 60;
         });
+
+        // Total Row
+        ctx.strokeStyle = '#1a1f3c';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(60, y - 40);
+        ctx.lineTo(1540, y - 40);
+        ctx.stroke();
+
+        ctx.fillStyle = '#1a1f3c';
+        ctx.font = 'bold 28px Helvetica, Arial, sans-serif';
+        ctx.fillText('TOTAL AREA', 60, y + 20);
+        ctx.fillText(`${totalArea.toLocaleString(undefined, {maximumFractionDigits: 0})} SQ FT`, 1000, y + 20);
 
         const url = canvas.toDataURL('image/png');
         const link = document.createElement('a');
@@ -369,14 +395,19 @@ export default function Sketcher({ onSave, initialData }: Props) {
                   const my = (p1.y + p2.y) / 2;
                   const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)) / SCALE;
                   const ang = Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
+                  const wW = 40 / camera.z, wH = 20 / camera.z;
                   
                   return (
                     <g key={`${s.id}-dim-${i}`} transform={`translate(${mx}, ${my}) rotate(${Math.abs(ang) > 90 ? ang + 180 : ang})`}>
+                      <rect 
+                        x={-wW / 2} y={-wH / 2} width={wW} height={wH} rx={4 / camera.z} 
+                        fill="rgba(255,255,255,0.9)" 
+                      />
                       <text 
-                        y="-4" 
+                        y={4 / camera.z} 
                         textAnchor="middle" 
-                        fill="rgba(255,255,255,0.6)" 
-                        fontSize={10 / camera.z} 
+                        fill="#333" 
+                        fontSize={11 / camera.z} 
                         fontWeight="bold"
                         pointerEvents="none"
                       >
@@ -389,24 +420,30 @@ export default function Sketcher({ onSave, initialData }: Props) {
                 {/* Area Label */}
                 {s.closed && (
                   <g transform={`translate(${centroid.x}, ${centroid.y})`}>
+                    <rect 
+                      x={-60 / camera.z} y={-22 / camera.z} width={120 / camera.z} height={44 / camera.z} 
+                      rx={8 / camera.z} fill="rgba(255,255,255,0.95)" 
+                      stroke={s.color} strokeWidth={2 / camera.z}
+                    />
                     <text 
+                      y={-2 / camera.z}
                       textAnchor="middle" 
-                      fill="white" 
+                      fill="#1a1f3c" 
                       fontSize={14 / camera.z} 
                       fontWeight="bold"
-                      style={{ filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.5))' }}
                       pointerEvents="none"
                     >
                       {s.name || s.label}
                     </text>
                     <text 
-                      y={18 / camera.z} 
+                      y={16 / camera.z} 
                       textAnchor="middle" 
-                      fill="rgba(255,255,255,0.7)" 
+                      fill={s.color} 
                       fontSize={12 / camera.z}
+                      fontWeight="bold"
                       pointerEvents="none"
                     >
-                      {areaSqFt.toFixed(0)} sq ft
+                      {areaSqFt.toLocaleString(undefined, {maximumFractionDigits: 0})} sq ft
                     </text>
                   </g>
                 )}
@@ -493,12 +530,14 @@ export default function Sketcher({ onSave, initialData }: Props) {
       {editingAreaIdx !== null && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal + " glass-panel"}>
-            <h3>Area Settings</h3>
+            <h2 style={{ marginBottom: '24px', color: 'var(--primary)' }}>Area Details</h2>
+            
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-dim)' }}>Area Name</label>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: 'var(--text-dim)' }}>AREA NAME</label>
               <input 
                 className={styles.modalInput} 
                 value={shapes[editingAreaIdx]?.name || ''} 
+                autoFocus
                 onChange={(e) => {
                   const next = [...shapes];
                   next[editingAreaIdx].name = e.target.value;
@@ -509,25 +548,25 @@ export default function Sketcher({ onSave, initialData }: Props) {
             </div>
             
             <div style={{ marginBottom: '32px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-dim)' }}>Multiplier</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <button className={styles.stepBtn} onClick={() => {
-                  const next = [...shapes];
-                  next[editingAreaIdx].multiplier = Math.max(0, next[editingAreaIdx].multiplier - 0.25);
-                  setShapes(next);
-                }}>-</button>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', minWidth: '60px', textAlign: 'center' }}>
-                  {shapes[editingAreaIdx]?.multiplier.toFixed(2)}x
-                </div>
-                <button className={styles.stepBtn} onClick={() => {
-                  const next = [...shapes];
-                  next[editingAreaIdx].multiplier += 0.25;
-                  setShapes(next);
-                }}>+</button>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: 'var(--text-dim)' }}>AREA MULTIPLIER</label>
+              <div className={styles.multGrid}>
+                {[0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(v => (
+                  <button 
+                    key={v}
+                    className={`${styles.multBtn} ${shapes[editingAreaIdx]?.multiplier === v ? styles.multBtnActive : ''}`}
+                    onClick={() => {
+                      const next = [...shapes];
+                      next[editingAreaIdx].multiplier = v;
+                      setShapes(next);
+                    }}
+                  >
+                    {v}x
+                  </button>
+                ))}
               </div>
             </div>
 
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setEditingAreaIdx(null)}>
+            <button className="btn btn-primary" style={{ width: '100%', padding: '14px' }} onClick={() => setEditingAreaIdx(null)}>
               Done
             </button>
           </div>
