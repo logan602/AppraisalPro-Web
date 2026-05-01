@@ -133,3 +133,37 @@
   font-size: 48px;
   color: var(--text-dim);
 }
+
+.controlsGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sortSelect {
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-main);
+}
+
+.sortSelect:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-focus);
+}
+
+.sortSelect:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.sortSelect option {
+  background: var(--bg-deep);
+  color: var(--text-main);
+}

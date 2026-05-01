@@ -27,6 +27,7 @@ interface Appraisal {
 export default function AppraisalsPage() {
   const { token } = useAuth();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
+  const [sortBy, setSortBy] = useState<'date' | 'alpha'>('date');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -51,13 +52,33 @@ export default function AppraisalsPage() {
     }
   };
 
+  const sortedAppraisals = [...appraisals].sort((a, b) => {
+    if (sortBy === 'date') {
+      const dateA = a.inspectionDate || a.createdAt;
+      const dateB = b.inspectionDate || b.createdAt;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    } else {
+      return (a.propertyAddress || '').localeCompare(b.propertyAddress || '');
+    }
+  });
+
   if (isLoading) return <div className={styles.emptyState}>Loading appraisals...</div>;
 
   return (
     <div className={styles.container}>
       <div className={styles.topBar}>
         <h1 className="gradient-text">Recent Appraisals</h1>
-        <button className="btn btn-secondary">Filter</button>
+        <div className={styles.controlsGroup}>
+          <select 
+            className={styles.sortSelect} 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value as 'date' | 'alpha')}
+          >
+            <option value="date">Sort by Date</option>
+            <option value="alpha">Sort A-Z (Address)</option>
+          </select>
+          <button className="btn btn-secondary">Filter</button>
+        </div>
       </div>
 
       <div className={styles.statsGrid}>
@@ -83,7 +104,7 @@ export default function AppraisalsPage() {
         </div>
       ) : (
         <div className={styles.appraisalsGrid}>
-          {appraisals.map((app) => (
+          {sortedAppraisals.map((app) => (
             <Link 
               key={app.id} 
               href={`/dashboard/appraisals/${app.id}`} 
