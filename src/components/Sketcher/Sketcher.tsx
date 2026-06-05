@@ -535,21 +535,19 @@ export default function Sketcher({ onSave, initialData }: Props) {
     const cp = active.points[active.points.length - 1]; // Current Point
     const ghosts: Point[] = [];
 
-    shapes.forEach((s) => {
-      s.points.forEach((p) => {
-        // Ghost point horizontal from CP, vertical from P
-        if (Math.abs(p.x - cp.x) > 1) {
-          ghosts.push({ x: p.x, y: cp.y });
-        }
-        // Ghost point vertical from CP, horizontal from P
-        if (Math.abs(p.y - cp.y) > 1) {
-          ghosts.push({ x: cp.x, y: p.y });
-        }
-        // Existing point itself
-        if (p.x !== cp.x || p.y !== cp.y) {
-          ghosts.push({ x: p.x, y: p.y });
-        }
-      });
+    active.points.forEach((p) => {
+      // Ghost point horizontal from CP, vertical from P
+      if (Math.abs(p.x - cp.x) > 1) {
+        ghosts.push({ x: p.x, y: cp.y });
+      }
+      // Ghost point vertical from CP, horizontal from P
+      if (Math.abs(p.y - cp.y) > 1) {
+        ghosts.push({ x: cp.x, y: p.y });
+      }
+      // Existing point itself
+      if (p.x !== cp.x || p.y !== cp.y) {
+        ghosts.push({ x: p.x, y: p.y });
+      }
     });
 
     // Remove duplicates
