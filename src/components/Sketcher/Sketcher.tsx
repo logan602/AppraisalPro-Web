@@ -118,6 +118,7 @@ export default function Sketcher({ onSave, initialData }: Props) {
 
   // ── New state ──
   const [mode, setMode] = useState<AppMode>('sketch');
+  const [controlsExpanded, setControlsExpanded] = useState(false);
   const [undoStack, setUndoStack] = useState<Shape[][]>([]);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -335,8 +336,17 @@ export default function Sketcher({ onSave, initialData }: Props) {
   }, [shapes]);
 
   useEffect(() => {
-    if (!waitingForStart) fitView();
-  }, [shapes.length, waitingForStart, fitView]);
+    if (!waitingForStart && mode === 'sketch') fitView();
+  }, [shapes.length, waitingForStart, fitView, mode]);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    setCamera(prev => ({
+      ...prev,
+      z: Math.min(4.0, Math.max(0.1, prev.z * zoomFactor))
+    }));
+  }, []);
 
   // ─── Modify mode: drag handlers ─────────────────────────────────────────────
 
@@ -762,6 +772,7 @@ export default function Sketcher({ onSave, initialData }: Props) {
         onMouseMove={handleContainerMouseMove}
         onMouseUp={handleContainerMouseUp}
         onMouseLeave={handleContainerMouseUp}
+        onWheel={handleWheel}
       >
         <svg
           className={styles.svgCanvas}
@@ -1125,8 +1136,17 @@ export default function Sketcher({ onSave, initialData }: Props) {
 
       {/* ── Sketch controls (hidden in modify mode) ── */}
       {mode === 'sketch' && (
-        <div className={styles.controls}>
-          <div className={styles.dpad}>
+        <div className={styles.controlsWrapper}>
+          <button 
+            className={styles.minimizeBtn}
+            onClick={() => setControlsExpanded(prev => !prev)}
+          >
+            {controlsExpanded ? '▼ Hide Controls' : '▲ Show Controls'}
+          </button>
+          
+          {controlsExpanded && (
+            <div className={styles.controls}>
+              <div className={styles.dpad}>
             <button onClick={() => handleDirection('NW')} className={styles.dirBtn}>NW</button>
             <button onClick={() => handleDirection('N')} className={styles.dirBtn}>N</button>
             <button onClick={() => handleDirection('NE')} className={styles.dirBtn}>NE</button>
@@ -1164,6 +1184,8 @@ export default function Sketcher({ onSave, initialData }: Props) {
               <button className={styles.toolBtn} onClick={() => setPendingWall(null)}>
                 ✕ Cancel
               </button>
+            </div>
+          )}
             </div>
           )}
         </div>
