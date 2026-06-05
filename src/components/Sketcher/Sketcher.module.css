@@ -13,7 +13,6 @@
   overflow: hidden;
   position: relative;
   border: 1px solid var(--border);
-  cursor: crosshair;
 }
 
 .svgCanvas {
@@ -22,11 +21,14 @@
   touch-action: none;
 }
 
+/* ── Controls (sketch mode) ─────────────────────────────────────────────────── */
+
 .controls {
   display: flex;
   justify-content: space-between;
-  padding: 20px;
   align-items: center;
+  gap: 24px;
+  padding: 20px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
   border: 1px solid var(--border);
@@ -34,7 +36,7 @@
 
 .dpad {
   display: grid;
-  grid-template-areas: 
+  grid-template-areas:
     "nw n ne"
     "w center e"
     "sw s se";
@@ -103,38 +105,73 @@
   margin-bottom: 8px;
 }
 
+.pendingActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: center;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────────────── */
+
 .toolbar {
   position: absolute;
   top: 16px;
   left: 16px;
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
   z-index: 10;
 }
 
 .toolBtn {
-  padding: 10px 16px;
-  background: rgba(11, 15, 26, 0.8);
+  padding: 9px 15px;
+  background: rgba(11, 15, 26, 0.85);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 20px;
   color: white;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.18s ease;
+  white-space: nowrap;
 }
 
-.toolBtn:hover {
+.toolBtn:hover:not(:disabled) {
   background: var(--primary);
   border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
+
+.toolBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Active state for the Mode toggle button */
+.toolBtnActive {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 14px var(--primary-glow);
+}
+
+.toolBtnActive:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+/* ── Stats panel ────────────────────────────────────────────────────────────── */
 
 .stats {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(11, 15, 26, 0.8);
+  background: rgba(11, 15, 26, 0.85);
   backdrop-filter: blur(10px);
   padding: 12px 20px;
   border-radius: 12px;
@@ -155,6 +192,8 @@
   font-weight: bold;
 }
 
+/* ── Modal ──────────────────────────────────────────────────────────────────── */
+
 .modalInput {
   width: 100%;
   padding: 12px 16px;
@@ -164,44 +203,12 @@
   color: white;
   font-size: 16px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .modalInput:focus {
   border-color: var(--primary);
   background: rgba(255, 255, 255, 0.1);
-}
-
-.stepBtn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.stepBtn:hover {
-  background: var(--primary);
-  border-color: var(--primary);
-}
-
-.hint {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.6);
-  padding: 8px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  color: var(--text-dim);
-  z-index: 10;
 }
 
 .modalOverlay {
@@ -221,7 +228,7 @@
 
 .modal {
   width: 90%;
-  max-width: 400px;
+  max-width: 420px;
   padding: 32px;
   border-radius: 24px;
 }
@@ -252,4 +259,175 @@
 
 .multBtn:hover:not(.multBtnActive) {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Hint bar ───────────────────────────────────────────────────────────────── */
+
+.hint {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.65);
+  padding: 8px 22px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text-dim);
+  z-index: 10;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.hint b {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+
+/* ── Wall edit popup ────────────────────────────────────────────────────────── */
+
+.wallPopup {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: rgba(14, 18, 34, 0.97);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--primary);
+  border-radius: 14px;
+  padding: 16px 18px;
+  z-index: 500;
+  min-width: 180px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  animation: popupIn 0.15s ease;
+}
+
+@keyframes popupIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 4px)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 12px)) scale(1);
+  }
+}
+
+/* Small triangle pointer */
+.wallPopup::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid var(--primary);
+}
+
+.wallPopupTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.wallPopupRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.wallPopupInput {
+  flex: 1;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  color: white;
+  font-size: 18px;
+  font-family: monospace;
+  font-weight: bold;
+  outline: none;
+  width: 0;
+  /* Remove number input spinners */
+  -moz-appearance: textfield;
+}
+
+.wallPopupInput::-webkit-outer-spin-button,
+.wallPopupInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.wallPopupInput:focus {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.35);
+}
+
+.wallPopupUnit {
+  font-size: 16px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.wallPopupBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.wallPopupConfirm {
+  flex: 1;
+  padding: 8px 0;
+  background: var(--primary);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wallPopupConfirm:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.wallPopupCancel {
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wallPopupCancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+/* ── Misc (kept for export compat) ─────────────────────────────────────────── */
+
+.stepBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.stepBtn:hover {
+  background: var(--primary);
+  border-color: var(--primary);
 }
