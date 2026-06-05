@@ -48,12 +48,16 @@ function adjustWallLength(shape: Shape, wallIdx: number, newFeet: number): Shape
   const deltaX = (oldDx / oldLen) * newLen - oldDx;
   const deltaY = (oldDy / oldLen) * newLen - oldDy;
 
-  // Shift every point from p2Idx around to (but not including) wallIdx
-  let i = p2Idx;
-  while (i !== wallIdx) {
-    pts[i].x += deltaX;
-    pts[i].y += deltaY;
-    i = (i + 1) % n;
+  // Shift every point downstream from p2Idx up to n - 1
+  if (wallIdx === n - 1) {
+    // If the closing wall itself is edited, keep pts[0] fixed by shifting pts[n-1] backward
+    pts[n - 1].x -= deltaX;
+    pts[n - 1].y -= deltaY;
+  } else {
+    for (let i = wallIdx + 1; i < n; i++) {
+      pts[i].x += deltaX;
+      pts[i].y += deltaY;
+    }
   }
 
   return { ...shape, points: pts };
@@ -517,9 +521,38 @@ export default function Sketcher({ onSave, initialData }: Props) {
       active.points.length === 0
     )
       return [];
-    return shapes.flatMap((s, si) =>
-      s.points.map((p, pi) => ({ x: p.x, y: p.y, si, pi }))
-    );
+
+    const cp = active.points[active.points.length - 1]; // Current Point
+    const ghosts: Point[] = [];
+
+    shapes.forEach((s) => {
+      s.points.forEach((p) => {
+        // Ghost point horizontal from CP, vertical from P
+        if (Math.abs(p.x - cp.x) > 1) {
+          ghosts.push({ x: p.x, y: cp.y });
+        }
+        // Ghost point vertical from CP, horizontal from P
+        if (Math.abs(p.y - cp.y) > 1) {
+          ghosts.push({ x: cp.x, y: p.y });
+        }
+        // Existing point itself
+        if (p.x !== cp.x || p.y !== cp.y) {
+          ghosts.push({ x: p.x, y: p.y });
+        }
+      });
+    });
+
+    // Remove duplicates
+    const unique = [];
+    const seen = new Set<string>();
+    for (const g of ghosts) {
+      const key = `${Math.round(g.x)},${Math.round(g.y)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(g);
+      }
+    }
+    return unique;
   }, [mode, shapes, active, waitingForStart]);
 
   // ─── Export ─────────────────────────────────────────────────────────────────
@@ -651,21 +684,32 @@ export default function Sketcher({ onSave, initialData }: Props) {
           <button className={styles.toolBtn} onClick={closeArea}>🔒 Close Area</button>
         )}
 
-        <button
-          className={`${styles.toolBtn} ${mode === 'modify' ? styles.toolBtnActive : ''}`}
-          onClick={() => {
-            const next: AppMode = mode === 'sketch' ? 'modify' : 'sketch';
-            setMode(next);
-            if (next === 'modify') setPendingWall(null);
-            setWallEdit(null);
-            setDragState(null);
-            dragStateRef.current = null;
-            isDraggingRef.current = false;
-            setIsDragging(false);
-          }}
-        >
-          {mode === 'modify' ? '✏️ Modify Mode' : '↖ Sketch Mode'}
-        </button>
+        <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '24px', border: '1px solid var(--border)' }}>
+          <button
+            className={`${styles.toolBtn} ${mode === 'sketch' ? styles.toolBtnActive : ''}`}
+            onClick={() => {
+              setMode('sketch');
+            }}
+            style={{ border: 'none' }}
+          >
+            ↖ Sketch Mode
+          </button>
+          <button
+            className={`${styles.toolBtn} ${mode === 'modify' ? styles.toolBtnActive : ''}`}
+            onClick={() => {
+              setMode('modify');
+              setPendingWall(null);
+              setWallEdit(null);
+              setDragState(null);
+              dragStateRef.current = null;
+              isDraggingRef.current = false;
+              setIsDragging(false);
+            }}
+            style={{ border: 'none' }}
+          >
+            ✏️ Modify Mode
+          </button>
+        </div>
 
         <button
           className={styles.toolBtn}
